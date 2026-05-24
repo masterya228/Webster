@@ -5,6 +5,59 @@ import DefaultAvatar from '../components/DefaultAvatar';
 import { useAuthStore } from '../store/authStore';
 import api from '../api/client';
 
+function DeleteAccountModal({ onConfirm, onCancel, loading }: { onConfirm: () => void; onCancel: () => void; loading: boolean }) {
+  const [confirmText, setConfirmText] = useState('');
+  const KEYWORD = 'ВИДАЛИТИ';
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 24 }}
+      onClick={onCancel}>
+      <div className="card" style={{ width: '100%', maxWidth: 440, padding: 32 }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+          <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+              <path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+            </svg>
+          </div>
+          <div>
+            <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 2 }}>Видалити акаунт</h3>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Цю дію неможливо скасувати</p>
+          </div>
+        </div>
+
+        <p style={{ fontSize: 14, color: 'var(--text)', marginBottom: 16, lineHeight: 1.6 }}>
+          Будуть <strong>назавжди видалені</strong> всі ваші дизайни, шаблони та дані профілю. Відновлення неможливе.
+        </p>
+
+        <label style={{ fontSize: 13, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
+          Введіть <strong style={{ color: '#dc2626' }}>{KEYWORD}</strong> для підтвердження:
+        </label>
+        <input
+          value={confirmText}
+          onChange={e => setConfirmText(e.target.value)}
+          placeholder={KEYWORD}
+          style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, background: 'var(--bg)', color: 'var(--text)', outline: 'none', marginBottom: 20, boxSizing: 'border-box' }}
+          autoFocus
+        />
+
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          <button className="btn btn-ghost" onClick={onCancel} disabled={loading}>Скасувати</button>
+          <button
+            onClick={onConfirm}
+            disabled={confirmText !== KEYWORD || loading}
+            style={{
+              padding: '8px 20px', borderRadius: 8, border: 'none', fontWeight: 600, fontSize: 14, cursor: confirmText === KEYWORD && !loading ? 'pointer' : 'not-allowed',
+              background: confirmText === KEYWORD ? '#dc2626' : '#e5e7eb', color: confirmText === KEYWORD ? '#fff' : '#9ca3af',
+              transition: 'background 0.2s', display: 'flex', alignItems: 'center', gap: 8,
+            }}>
+            {loading ? <><span className="spinner" style={{ width: 14, height: 14, borderWidth: 2, borderColor: '#fff transparent transparent' }} /> Видалення…</> : 'Видалити акаунт'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ProfilePage() {
   const { user, updateUser } = useAuthStore();
   const navigate = useNavigate();
@@ -22,6 +75,8 @@ export default function ProfilePage() {
   const [errorMsg, setErrorMsg]       = useState('');
   const [pwSuccess, setPwSuccess]     = useState('');
   const [pwError, setPwError]         = useState('');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting]       = useState(false);
 
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -96,6 +151,19 @@ export default function ProfilePage() {
     } finally {
       setUploading(false);
       e.target.value = '';
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    try {
+      await api.delete('/users/me');
+      useAuthStore.getState().logout();
+      navigate('/');
+    } catch {
+      setDeleting(false);
+      setShowDeleteModal(false);
+      flash(setErrorMsg, 'Помилка видалення акаунту');
     }
   };
 
@@ -196,7 +264,34 @@ export default function ProfilePage() {
             <div><strong>Зареєстровано:</strong> {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'}</div>
           </div>
         ))}
+
+        <div className="card" style={{ padding: 28, marginBottom: 20, border: '1px solid #fca5a5' }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, color: '#dc2626' }}>Небезпечна зона</h3>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16, lineHeight: 1.6 }}>
+            Видалення акаунту призведе до безповоротного знищення всіх ваших даних — дизайнів, шаблонів і профілю.
+          </p>
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            style={{
+              padding: '8px 20px', borderRadius: 8, border: '1.5px solid #dc2626',
+              background: 'transparent', color: '#dc2626', fontWeight: 600,
+              fontSize: 14, cursor: 'pointer', transition: 'background 0.2s, color 0.2s',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#dc2626'; (e.currentTarget as HTMLElement).style.color = '#fff'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#dc2626'; }}
+          >
+            Видалити акаунт
+          </button>
+        </div>
       </div>
+
+      {showDeleteModal && (
+        <DeleteAccountModal
+          onConfirm={handleDeleteAccount}
+          onCancel={() => setShowDeleteModal(false)}
+          loading={deleting}
+        />
+      )}
     </div>
   );
 }
