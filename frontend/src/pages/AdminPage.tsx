@@ -19,7 +19,7 @@ interface AdminDesign {
 }
 interface AdminTemplate {
   id: string; name: string; category: string; width: number; height: number;
-  userId?: string; createdAt: string;
+  thumbnail?: string; userId?: string; createdAt: string;
   user?: { id: string; name: string; email: string };
 }
 
@@ -27,23 +27,32 @@ interface AdminTemplate {
 function EditUserModal({
   user, onSave, onClose,
 }: { user: AdminUser; onSave: (id: string, data: any) => Promise<void>; onClose: () => void }) {
-  const [name,  setName]  = useState(user.name);
-  const [email, setEmail] = useState(user.email);
-  const [role,  setRole]  = useState<'user' | 'admin'>(user.role);
-  const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState('');
-
-  const handleSave = async () => {
-    setSaving(true); setErr('');
-    try { await onSave(user.id, { name, email, role }); onClose(); }
-    catch (e: any) { setErr(e?.response?.data?.message || 'Помилка збереження'); }
-    finally { setSaving(false); }
-  };
+  const [name,    setName]    = useState(user.name);
+  const [saving,  setSaving]  = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [err,     setErr]     = useState('');
+  const [localAvatar, setLocalAvatar] = useState(user.avatar);
 
   const inp: React.CSSProperties = {
     width: '100%', padding: '9px 12px', borderRadius: 8,
     border: '1px solid var(--border)', fontSize: 14,
     background: 'var(--bg)', color: 'var(--text)', outline: 'none', boxSizing: 'border-box',
+  };
+
+  const handleSave = async () => {
+    setSaving(true); setErr('');
+    try { await onSave(user.id, { name }); onClose(); }
+    catch (e: any) { setErr(e?.response?.data?.message || 'Помилка збереження'); }
+    finally { setSaving(false); }
+  };
+
+  const handleRemoveAvatar = async () => {
+    setRemoving(true); setErr('');
+    try {
+      await onSave(user.id, { avatar: null });
+      setLocalAvatar(undefined);
+    } catch (e: any) { setErr(e?.response?.data?.message || 'Помилка видалення аватару'); }
+    finally { setRemoving(false); }
   };
 
   return (
@@ -52,20 +61,23 @@ function EditUserModal({
       <div className="card" style={{ width: 400, padding: 28 }} onClick={e => e.stopPropagation()}>
         <h3 style={{ marginBottom: 20, fontSize: 17, fontWeight: 700 }}>Редагувати користувача</h3>
 
-        <div style={{ marginBottom: 14 }}>
+        {/* avatar row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
+          {localAvatar
+            ? <img src={localAvatar} alt="" style={{ width: 52, height: 52, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--border)' }} />
+            : <DefaultAvatar size={52} />}
+          {localAvatar && (
+            <button onClick={handleRemoveAvatar} disabled={removing}
+              style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid #fca5a5', background: 'transparent', color: '#dc2626', fontSize: 12, cursor: 'pointer', fontWeight: 500 }}>
+              {removing ? 'Видалення…' : 'Видалити фото'}
+            </button>
+          )}
+          {!localAvatar && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Аватар відсутній</span>}
+        </div>
+
+        <div style={{ marginBottom: 20 }}>
           <label style={{ fontSize: 13, color: 'var(--text-muted)', display: 'block', marginBottom: 5 }}>Ім'я</label>
           <input style={inp} value={name} onChange={e => setName(e.target.value)} />
-        </div>
-        <div style={{ marginBottom: 14 }}>
-          <label style={{ fontSize: 13, color: 'var(--text-muted)', display: 'block', marginBottom: 5 }}>Email</label>
-          <input style={inp} type="email" value={email} onChange={e => setEmail(e.target.value)} />
-        </div>
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ fontSize: 13, color: 'var(--text-muted)', display: 'block', marginBottom: 5 }}>Роль</label>
-          <select style={{ ...inp }} value={role} onChange={e => setRole(e.target.value as 'user' | 'admin')}>
-            <option value="user">Користувач</option>
-            <option value="admin">Адміністратор</option>
-          </select>
         </div>
 
         {err && <div style={{ padding: '8px 12px', borderRadius: 6, background: '#fee2e2', color: '#991b1b', fontSize: 13, marginBottom: 12 }}>✗ {err}</div>}
@@ -95,15 +107,20 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (me?.role !== 'admin') { navigate('/dashboard'); return; }
-    loadTab(tab);
-  }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
+    loadAll();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const loadTab = async (t: AdminTab) => {
-    setLoading(true); setSearch('');
+  const loadAll = async () => {
+    setLoading(true);
     try {
-      if (t === 'users')     setUsers((await api.get('/admin/users')).data);
-      if (t === 'designs')   setDesigns((await api.get('/admin/designs')).data);
-      if (t === 'templates') setTemplates((await api.get('/admin/templates')).data);
+      const [u, d, t] = await Promise.all([
+        api.get('/admin/users'),
+        api.get('/admin/designs'),
+        api.get('/admin/templates'),
+      ]);
+      setUsers(u.data);
+      setDesigns(d.data);
+      setTemplates(t.data);
     } finally { setLoading(false); }
   };
 
@@ -322,8 +339,8 @@ export default function AdminPage() {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
+                      <th style={thStyle}>Прев'ю</th>
                       <th style={thStyle}>Назва</th>
-                      <th style={thStyle}>Категорія</th>
                       <th style={thStyle}>Власник</th>
                       <th style={thStyle}>Розмір</th>
                       <th style={thStyle}>Тип</th>
@@ -336,8 +353,12 @@ export default function AdminPage() {
                       <tr key={t.id}
                         onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface)'}
                         onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ''}>
+                        <td style={tdStyle}>
+                          {t.thumbnail
+                            ? <img src={t.thumbnail} alt="" style={{ width: 56, height: 40, objectFit: 'contain', borderRadius: 6, border: '1px solid var(--border)', background: '#fff' }} />
+                            : <div style={{ width: 56, height: 40, borderRadius: 6, background: 'var(--surface)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>📋</div>}
+                        </td>
                         <td style={{ ...tdStyle, fontWeight: 500 }}>{t.name}</td>
-                        <td style={{ ...tdStyle, color: 'var(--text-muted)' }}>{t.category}</td>
                         <td style={tdStyle}>
                           {t.user
                             ? <div style={{ fontSize: 12 }}><div style={{ fontWeight: 500 }}>{t.user.name}</div><div style={{ color: 'var(--text-muted)' }}>{t.user.email}</div></div>
@@ -353,10 +374,14 @@ export default function AdminPage() {
                         </td>
                         <td style={{ ...tdStyle, color: 'var(--text-muted)' }}>{fmt(t.createdAt)}</td>
                         <td style={{ ...tdStyle, textAlign: 'right' }}>
-                          <button onClick={() => handleDeleteTemplate(t.id, t.name)}
-                            style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid #fca5a5', background: 'transparent', color: '#dc2626', fontSize: 12, cursor: 'pointer', fontWeight: 500 }}>
-                            Видалити
-                          </button>
+                          {t.userId ? (
+                            <button onClick={() => handleDeleteTemplate(t.id, t.name)}
+                              style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid #fca5a5', background: 'transparent', color: '#dc2626', fontSize: 12, cursor: 'pointer', fontWeight: 500 }}>
+                              Видалити
+                            </button>
+                          ) : (
+                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>—</span>
+                          )}
                         </td>
                       </tr>
                     ))}

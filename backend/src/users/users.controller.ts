@@ -16,7 +16,9 @@ export class UsersController {
 
   @Get('me')
   async getMe(@Request() req) {
-    return this.usersService.findById(req.user.id);
+    const user = await this.usersService.findById(req.user.id);
+    const { password, verificationToken, ...safe } = user as any;
+    return { ...safe, hasPassword: !!password };
   }
 
   @Patch('me')

@@ -103,17 +103,23 @@ export default function ProfilePage() {
     }
   };
 
+  const hasPassword = user?.hasPassword ?? true; // assume true for safety
+
   const handleChangePassword = async () => {
     setPwError('');
     if (newPw !== confirmPw) { flash(setPwError, 'Паролі не збігаються'); return; }
     if (newPw.length < 6) { flash(setPwError, 'Мінімум 6 символів'); return; }
     setSavingPw(true);
     try {
-      await api.patch('/users/me', { currentPassword: currentPw, newPassword: newPw });
+      const payload = hasPassword
+        ? { currentPassword: currentPw, newPassword: newPw }
+        : { newPassword: newPw };
+      const { data } = await api.patch('/users/me', payload);
+      updateUser({ ...user!, hasPassword: true });
       setCurrentPw(''); setNewPw(''); setConfirmPw('');
-      flash(setPwSuccess, 'Пароль змінено');
+      flash(setPwSuccess, hasPassword ? 'Пароль змінено' : 'Пароль встановлено');
     } catch (e: any) {
-      flash(setPwError, e?.response?.data?.message || 'Невірний поточний пароль');
+      flash(setPwError, e?.response?.data?.message || 'Помилка зміни пароля');
     } finally {
       setSavingPw(false);
     }
@@ -236,24 +242,35 @@ export default function ProfilePage() {
           </>
         ))}
 
-        {section('Зміна пароля', (
+        {section(hasPassword ? 'Зміна пароля' : 'Встановити пароль', (
           <>
+            {!hasPassword && (
+              <div style={{ padding: '10px 14px', borderRadius: 8, background: '#fef3c7', color: '#92400e', fontSize: 13, marginBottom: 16 }}>
+                Ваш акаунт зареєстровано через Google і не має пароля. Ви можете встановити пароль для входу за email.
+              </div>
+            )}
+            {hasPassword && (
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontSize: 13, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Поточний пароль</label>
+                <input style={inp} type="password" value={currentPw} onChange={e => setCurrentPw(e.target.value)} placeholder="••••••••" />
+              </div>
+            )}
             <div style={{ marginBottom: 14 }}>
-              <label style={{ fontSize: 13, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Поточний пароль</label>
-              <input style={inp} type="password" value={currentPw} onChange={e => setCurrentPw(e.target.value)} placeholder="••••••••" />
-            </div>
-            <div style={{ marginBottom: 14 }}>
-              <label style={{ fontSize: 13, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Новий пароль</label>
+              <label style={{ fontSize: 13, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>{hasPassword ? 'Новий пароль' : 'Пароль'}</label>
               <input style={inp} type="password" value={newPw} onChange={e => setNewPw(e.target.value)} placeholder="Мінімум 6 символів" />
             </div>
             <div style={{ marginBottom: 20 }}>
               <label style={{ fontSize: 13, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Підтвердження</label>
-              <input style={inp} type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)} placeholder="Повторіть новий пароль" />
+              <input style={inp} type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)} placeholder="Повторіть пароль" />
             </div>
             {pwSuccess && <div style={{ padding: '8px 12px', borderRadius: 6, background: '#d1fae5', color: '#065f46', fontSize: 13, marginBottom: 12 }}>✓ {pwSuccess}</div>}
             {pwError   && <div style={{ padding: '8px 12px', borderRadius: 6, background: '#fee2e2', color: '#991b1b', fontSize: 13, marginBottom: 12 }}>✗ {pwError}</div>}
-            <button className="btn btn-primary" onClick={handleChangePassword} disabled={savingPw || !currentPw || !newPw || !confirmPw}>
-              {savingPw ? <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /> : 'Змінити пароль'}
+            <button className="btn btn-primary"
+              onClick={handleChangePassword}
+              disabled={savingPw || (hasPassword ? !currentPw : false) || !newPw || !confirmPw}>
+              {savingPw
+                ? <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
+                : hasPassword ? 'Змінити пароль' : 'Встановити пароль'}
             </button>
           </>
         ))}

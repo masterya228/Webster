@@ -130,11 +130,15 @@ export class UsersService {
     }
 
     if (dto.newPassword) {
-      if (!dto.currentPassword) throw new BadRequestException('Current password required');
-      if (!user.password) throw new BadRequestException('Account has no password (Google login)');
-      const valid = await bcrypt.compare(dto.currentPassword, user.password);
-      if (!valid) throw new BadRequestException('Current password is incorrect');
-      user.password = await bcrypt.hash(dto.newPassword, 10);
+      if (!user.password) {
+        // Google-only account — allow setting a password for the first time
+        user.password = await bcrypt.hash(dto.newPassword, 10);
+      } else {
+        if (!dto.currentPassword) throw new BadRequestException('Current password required');
+        const valid = await bcrypt.compare(dto.currentPassword, user.password);
+        if (!valid) throw new BadRequestException('Current password is incorrect');
+        user.password = await bcrypt.hash(dto.newPassword, 10);
+      }
     }
 
     return this.usersRepository.save(user);
