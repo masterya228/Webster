@@ -101,14 +101,9 @@ export default function AdminPage() {
   const [users,     setUsers]     = useState<AdminUser[]>([]);
   const [designs,   setDesigns]   = useState<AdminDesign[]>([]);
   const [templates, setTemplates] = useState<AdminTemplate[]>([]);
-  const [loading,   setLoading]   = useState(false);
-  const [editUser,  setEditUser]  = useState<AdminUser | null>(null);
-  const [search,    setSearch]    = useState('');
-
-  useEffect(() => {
-    if (me?.role !== 'admin') { navigate('/dashboard'); return; }
-    loadAll();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const [loading,  setLoading]  = useState(false);
+  const [editUser, setEditUser] = useState<AdminUser | null>(null);
+  const [search,   setSearch]   = useState('');
 
   const loadAll = async () => {
     setLoading(true);
@@ -124,10 +119,17 @@ export default function AdminPage() {
     } finally { setLoading(false); }
   };
 
+  useEffect(() => {
+    if (me?.role !== 'admin') { navigate('/dashboard'); return; }
+    loadAll();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleDeleteUser = async (id: string, name: string) => {
     if (!confirm(`Видалити акаунт "${name}"? Всі дизайни та шаблони теж видаляться.`)) return;
     await api.delete(`/admin/users/${id}`);
     setUsers(prev => prev.filter(u => u.id !== id));
+    setDesigns(prev => prev.filter(d => d.userId !== id));
+    setTemplates(prev => prev.filter(t => t.userId !== id));
   };
 
   const handleSaveUser = async (id: string, data: any) => {
