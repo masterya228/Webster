@@ -17,6 +17,8 @@ interface ToolbarProps {
   templatesOpen: boolean;
   onToggleStickers: () => void;
   stickersOpen: boolean;
+  onToggleLayers: () => void;
+  layersOpen: boolean;
 }
 
 interface ToolDef { id: string; label: string; icon: React.ReactNode; action?: () => void; }
@@ -57,6 +59,13 @@ const Ic = {
     </svg>
   ),
   sticker: <span style={{ fontSize: 13 }}>😀</span>,
+  layers: (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+      <polyline points="2 17 12 22 22 17"/>
+      <polyline points="2 12 12 17 22 12"/>
+    </svg>
+  ),
   templates: (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
@@ -120,6 +129,7 @@ export default function Toolbar({
   onBringToFront, onSendToBack,
   onToggleTemplates, templatesOpen,
   onToggleStickers, stickersOpen,
+  onToggleLayers, layersOpen,
 }: ToolbarProps) {
   const [shapesOpen, setShapesOpen] = useState(true);
 
@@ -236,15 +246,12 @@ export default function Toolbar({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '0 4px' }}>
         {btn({ id: 'text',  label: 'Текст',      icon: Ic.text,  action: onAddText })}
         {btn({ id: 'image', label: 'Зображення', icon: Ic.image, action: onUploadImage })}
-      </div>
-
-      {sectionLabel('Стікери')}
-      <div style={{ padding: '0 4px' }}>
         {iconBtn('stickers', 'Стікери', Ic.sticker, stickersOpen, onToggleStickers)}
       </div>
 
-      {sectionLabel('Шаблони')}
-      <div style={{ padding: '0 4px' }}>
+      {sectionLabel('Сцена')}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '0 4px' }}>
+        {iconBtn('layers',    'Шари',    Ic.layers,    layersOpen,    onToggleLayers)}
         {iconBtn('templates', 'Шаблони', Ic.templates, templatesOpen, onToggleTemplates)}
       </div>
 

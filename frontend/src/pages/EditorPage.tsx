@@ -90,6 +90,7 @@ export default function EditorPage() {
   const [objects,        setObjects]        = useState<fabric.Object[]>([]);
   const [showTemplates,  setShowTemplates]  = useState(false);
   const [showStickers,   setShowStickers]   = useState(false);
+  const [showLayers,     setShowLayers]     = useState(true);
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [showShare,      setShowShare]      = useState(false);
   const [isPublic,       setIsPublic]       = useState(false);
@@ -187,7 +188,7 @@ export default function EditorPage() {
     setHistoryState(prev => ({ ...prev, index: i }));
   }, [refreshObjects]);
 
-  const applyZoom = useCallback((newZ: number, cursorInWrapper?: { x: number; y: number }) => {
+  const applyZoom = useCallback((newZ: number, cursorClient?: { x: number; y: number }) => {
     const c = fabricRef.current;
     const wrapper = canvasWrapRef.current;
     if (!c) return;
@@ -195,12 +196,18 @@ export default function EditorPage() {
     const oldZ = zoomRef.current;
     const clampedZ = Math.max(0.1, Math.min(5, newZ));
 
-    let logicalX = 0, logicalY = 0;
-    if (cursorInWrapper && wrapper) {
-      const absX = cursorInWrapper.x + wrapper.scrollLeft;
-      const absY = cursorInWrapper.y + wrapper.scrollTop;
-      logicalX = absX / oldZ;
-      logicalY = absY / oldZ;
+    // Compute cursor's logical canvas coords relative to the canvas element itself
+    // (works correctly regardless of centering/scrolling in the wrapper)
+    let logicalX = -1, logicalY = -1;
+    if (cursorClient) {
+      const canvasEl = c.getElement() as HTMLCanvasElement;
+      const cr = canvasEl.getBoundingClientRect();
+      const cx = cursorClient.x - cr.left;
+      const cy = cursorClient.y - cr.top;
+      if (cx >= 0 && cy >= 0 && cx <= cr.width && cy <= cr.height) {
+        logicalX = cx / oldZ;
+        logicalY = cy / oldZ;
+      }
     }
 
     c.setZoom(clampedZ);
@@ -210,11 +217,19 @@ export default function EditorPage() {
     zoomRef.current = clampedZ;
     setZoom(clampedZ);
 
-    if (cursorInWrapper && wrapper) {
-      const newAbsX = logicalX * clampedZ;
-      const newAbsY = logicalY * clampedZ;
-      wrapper.scrollLeft = newAbsX - cursorInWrapper.x;
-      wrapper.scrollTop  = newAbsY - cursorInWrapper.y;
+    // After DOM reflow (rAF), adjust scroll so the hovered canvas point stays under cursor
+    if (logicalX >= 0 && cursorClient && wrapper) {
+      requestAnimationFrame(() => {
+        if (!wrapper || !c) return;
+        const canvasEl = c.getElement() as HTMLCanvasElement;
+        const cr = canvasEl.getBoundingClientRect();
+        // Where did the logical point end up on screen after resize + reflow?
+        const pointScreenX = cr.left + logicalX * clampedZ;
+        const pointScreenY = cr.top  + logicalY * clampedZ;
+        // Scroll to compensate
+        wrapper.scrollLeft += pointScreenX - cursorClient.x;
+        wrapper.scrollTop  += pointScreenY - cursorClient.y;
+      });
     }
   }, []);
 
@@ -224,9 +239,10 @@ export default function EditorPage() {
     const onWheel = (e: WheelEvent) => {
       if (!e.ctrlKey) return;
       e.preventDefault();
-      const newZ = Math.max(0.1, Math.min(5, zoomRef.current + (e.deltaY < 0 ? 0.05 : -0.05)));
-      const rect = el.getBoundingClientRect();
-      applyZoom(newZ, { x: e.clientX - rect.left, y: e.clientY - rect.top });
+      // Multiplicative zoom — feels more natural and proportional
+      const factor = e.deltaY < 0 ? 1.08 : 1 / 1.08;
+      const newZ = Math.max(0.1, Math.min(5, zoomRef.current * factor));
+      applyZoom(newZ, { x: e.clientX, y: e.clientY });
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
@@ -948,7 +964,14 @@ export default function EditorPage() {
   };
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#1a1a2e' }}>
+    <div className="editor-root" style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#1a1a2e' }}>
+      <style>{`
+        .editor-root ::-webkit-scrollbar { width: 5px; height: 5px; }
+        .editor-root ::-webkit-scrollbar-track { background: #12121f; }
+        .editor-root ::-webkit-scrollbar-thumb { background: #2a2a42; border-radius: 3px; }
+        .editor-root ::-webkit-scrollbar-thumb:hover { background: #3a3a58; }
+        .editor-root ::-webkit-scrollbar-corner { background: #12121f; }
+      `}</style>
       <div style={{
         height: 52, background: '#12121f', borderBottom: '1px solid #2d2d45',
         display: 'flex', alignItems: 'center', padding: '0 14px', gap: 10, flexShrink: 0,
@@ -1009,6 +1032,8 @@ export default function EditorPage() {
           templatesOpen={showTemplates}
           onToggleStickers={() => { setShowStickers(v => !v); setShowTemplates(false); }}
           stickersOpen={showStickers}
+          onToggleLayers={() => setShowLayers(v => !v)}
+          layersOpen={showLayers}
         />
 
         {showStickers && (
@@ -1030,14 +1055,16 @@ export default function EditorPage() {
           />
         )}
 
-        <LayersPanel
-          canvas={fabricRef.current}
-          objects={objects}
-          selectedObject={selectedObject}
-          onSelect={(obj) => setSelectedObject(obj)}
-          onRefresh={refreshObjects}
-          onReorder={() => pushHistory('↕ Шари')}
-        />
+        {showLayers && (
+          <LayersPanel
+            canvas={fabricRef.current}
+            objects={objects}
+            selectedObject={selectedObject}
+            onSelect={(obj) => setSelectedObject(obj)}
+            onRefresh={refreshObjects}
+            onReorder={() => pushHistory('↕ Шари')}
+          />
+        )}
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div
