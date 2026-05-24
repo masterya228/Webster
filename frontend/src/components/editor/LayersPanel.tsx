@@ -46,6 +46,12 @@ function getObjectIcon(obj: fabric.Object): string {
   return '◈';
 }
 
+const BG     = '#1a1a2e';
+const BORDER  = '#2d2d45';
+const TEXT    = '#d0d0e8';
+const MUTED   = '#6b6b90';
+const PRIMARY = '#6c63ff';
+
 export default function LayersPanel({ canvas, objects, selectedObject, onSelect, onRefresh, onReorder }: LayersPanelProps) {
   const reversed = [...objects].reverse();
   const dragIndexRef = useRef<number | null>(null); // index in `reversed`
@@ -101,13 +107,13 @@ export default function LayersPanel({ canvas, objects, selectedObject, onSelect,
   };
 
   return (
-    <div style={{ width: 172, background: 'var(--surface)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-      <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border)', fontSize: 13, fontWeight: 600 }}>
+    <div style={{ width: 172, background: BG, borderRight: `1px solid ${BORDER}`, display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+      <div style={{ padding: '12px 14px', borderBottom: `1px solid ${BORDER}`, fontSize: 13, fontWeight: 600, color: TEXT }}>
         Шари ({objects.length})
       </div>
       <div style={{ overflowY: 'auto', flex: 1 }}>
         {reversed.length === 0 && (
-          <div style={{ padding: 16, color: 'var(--text-muted)', fontSize: 13, textAlign: 'center' }}>
+          <div style={{ padding: 16, color: MUTED, fontSize: 12, textAlign: 'center' }}>
             Немає шарів.<br />Додайте фігури або текст.
           </div>
         )}
@@ -128,32 +134,30 @@ export default function LayersPanel({ canvas, objects, selectedObject, onSelect,
               onClick={() => { if (!isLocked) { canvas?.setActiveObject(obj); canvas?.renderAll(); onSelect(obj); } }}
               style={{
                 display: 'flex', alignItems: 'center', gap: 5, padding: '7px 10px',
-                background: isDragTarget
-                  ? 'var(--primary-light)'
-                  : isSelected ? 'rgba(108,99,255,.12)' : 'transparent',
+                background: isDragTarget ? 'rgba(108,99,255,.2)' : isSelected ? 'rgba(108,99,255,.12)' : 'transparent',
                 cursor: isLocked ? 'default' : 'pointer',
-                borderBottom: isDragTarget
-                  ? '2px solid var(--primary)'
-                  : '1px solid var(--border)',
+                borderBottom: isDragTarget ? `2px solid ${PRIMARY}` : `1px solid ${BORDER}`,
                 opacity: isHidden ? 0.4 : 1,
                 transition: 'background 0.1s',
                 userSelect: 'none',
               }}
+              onMouseEnter={e => { if (!isSelected && !isDragTarget) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,.04)'; }}
+              onMouseLeave={e => { if (!isSelected && !isDragTarget) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
             >
-              <span style={{ fontSize: 11, color: '#999', cursor: 'grab', flexShrink: 0, paddingRight: 1 }}>⠿</span>
-              <span style={{ fontSize: 13, flexShrink: 0, color: isSelected ? 'var(--primary)' : 'var(--text-muted)' }}>{getObjectIcon(obj)}</span>
+              <span style={{ fontSize: 11, color: MUTED, cursor: 'grab', flexShrink: 0, paddingRight: 1 }}>⠿</span>
+              <span style={{ fontSize: 13, flexShrink: 0, color: isSelected ? PRIMARY : MUTED }}>{getObjectIcon(obj)}</span>
               <span style={{
                 flex: 1, fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                color: isSelected ? 'var(--primary)' : 'var(--text)',
+                color: isSelected ? PRIMARY : TEXT,
               }}>
                 {getObjectLabel(obj)}
               </span>
               <button onClick={(e) => toggleVisibility(obj, e)} title={isHidden ? 'Показати' : 'Сховати'}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, opacity: 0.6, padding: 2, flexShrink: 0 }}>
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, opacity: 0.55, padding: 2, flexShrink: 0 }}>
                 {isHidden ? '🙈' : '👁'}
               </button>
               <button onClick={(e) => toggleLock(obj, e)} title={isLocked ? 'Розблокувати' : 'Заблокувати'}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, opacity: 0.6, padding: 2, flexShrink: 0 }}>
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, opacity: 0.55, padding: 2, flexShrink: 0 }}>
                 {isLocked ? '🔒' : '🔓'}
               </button>
             </div>

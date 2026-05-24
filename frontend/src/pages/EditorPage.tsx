@@ -575,7 +575,10 @@ export default function EditorPage() {
   };
 
   const selectTool = (tool: string) => {
-    if (SHAPE_TOOLS.includes(tool) || tool === 'pencil') inheritFromLastObject(tool);
+    // Don't inherit saved tool colors when switching FROM eyedropper — preserve the picked color
+    if (activeTool !== 'eyedropper') {
+      if (SHAPE_TOOLS.includes(tool) || tool === 'pencil') inheritFromLastObject(tool);
+    }
     setActiveTool(tool);
   };
 
@@ -957,29 +960,40 @@ export default function EditorPage() {
               saveDesign().then(() => navigate('/dashboard'));
             }
           }}
-          style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <LogoMark size={24} />
+          style={{ display: 'flex', alignItems: 'center', gap: 6, opacity: 0.8, transition: 'opacity .15s' }}
+          onMouseEnter={e => (e.currentTarget as HTMLElement).style.opacity = '1'}
+          onMouseLeave={e => (e.currentTarget as HTMLElement).style.opacity = '0.8'}>
+          <LogoMark size={22} />
         </Link>
-        <span style={{ color: '#555' }}>›</span>
+        <span style={{ color: '#2d2d45', fontSize: 18, lineHeight: 1 }}>›</span>
         <input value={title} onChange={(e) => setTitle(e.target.value)}
-          style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: 14, fontWeight: 500, outline: 'none', minWidth: 120, maxWidth: 240 }} />
+          style={{ background: 'transparent', border: 'none', color: '#c8c8e0', fontSize: 13, fontWeight: 500, outline: 'none', minWidth: 120, maxWidth: 240 }} />
         <div style={{ flex: 1 }} />
-        <span style={{ fontSize: 12, color: '#555' }}>Ctrl+колесо — масштаб</span>
+        <span style={{ fontSize: 11, color: '#444' }}>Ctrl+колесо — масштаб</span>
+        <span style={{ width: 1, height: 20, background: '#2d2d45', flexShrink: 0 }} />
+        <span style={{ fontSize: 11, color: '#555', fontWeight: 500 }}>Експорт:</span>
         {(['png','jpeg','svg','pdf'] as const).map(fmt => (
-          <button key={fmt} onClick={() => exportAs(fmt)} style={{ background: '#2d2d42', border: 'none', color: '#aaa', padding: '5px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}>
+          <button key={fmt} onClick={() => exportAs(fmt)} style={{ background: 'transparent', border: '1px solid #2d2d45', color: '#888', padding: '4px 8px', borderRadius: 5, cursor: 'pointer', fontSize: 11, fontWeight: 500, letterSpacing: '.04em', transition: 'border-color .15s, color .15s' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = '#6c63ff'; (e.currentTarget as HTMLElement).style.color = '#bbb'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = '#2d2d45'; (e.currentTarget as HTMLElement).style.color = '#888'; }}>
             {fmt.toUpperCase()}
           </button>
         ))}
+        <span style={{ width: 1, height: 20, background: '#2d2d45', flexShrink: 0 }} />
         <button onClick={() => setShowShare(true)}
-          style={{ background: '#2d2d42', border: 'none', color: '#aaa', padding: '5px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+          style={{ background: 'transparent', border: '1px solid #2d2d45', color: '#888', padding: '4px 10px', borderRadius: 5, cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 5, transition: 'border-color .15s, color .15s' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = '#6c63ff'; (e.currentTarget as HTMLElement).style.color = '#bbb'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = '#2d2d45'; (e.currentTarget as HTMLElement).style.color = '#888'; }}>
           🔗 Поширити
         </button>
         <button onClick={() => saveAsTemplate(undefined)} disabled={savingTemplate}
           title="Зберегти як мій шаблон"
-          style={{ background: '#2d2d42', border: 'none', color: '#aaa', padding: '5px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+          style={{ background: 'transparent', border: '1px solid #2d2d45', color: '#888', padding: '4px 10px', borderRadius: 5, cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 5, transition: 'border-color .15s, color .15s' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = '#6c63ff'; (e.currentTarget as HTMLElement).style.color = '#bbb'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = '#2d2d45'; (e.currentTarget as HTMLElement).style.color = '#888'; }}>
           {savingTemplate ? <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} /> : '📋'} Шаблон
         </button>
-        <button onClick={saveDesign} disabled={saving} className="btn btn-primary btn-sm" style={{ minWidth: 80, justifyContent: 'center' }}>
+        <button onClick={saveDesign} disabled={saving} className="btn btn-primary btn-sm" style={{ minWidth: 88, justifyContent: 'center', fontSize: 12 }}>
           {saving ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : saved ? '✓ Збережено' : 'Зберегти'}
         </button>
       </div>
@@ -1030,11 +1044,17 @@ export default function EditorPage() {
             ref={canvasWrapRef}
             style={{
               flex: 1, overflow: 'auto',
-              display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start',
-              background: '#2d2d3e', padding: 40,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: '#191927',
+              backgroundImage: 'radial-gradient(circle, #2a2a40 1px, transparent 1px)',
+              backgroundSize: '22px 22px',
+              padding: 48,
             }}
           >
-            <div style={{ boxShadow: '0 8px 48px rgba(0,0,0,.5)', flexShrink: 0, display: 'inline-block' }}>
+            <div style={{
+              boxShadow: '0 16px 64px rgba(0,0,0,.7), 0 0 0 1px rgba(108,99,255,.18)',
+              flexShrink: 0, display: 'inline-block', borderRadius: 2,
+            }}>
               <canvas ref={canvasRef} />
             </div>
           </div>
@@ -1078,12 +1098,18 @@ export default function EditorPage() {
         />
       )}
 
-      <div style={{ height: 26, background: '#12121f', borderTop: '1px solid #2d2d45', display: 'flex', alignItems: 'center', padding: '0 14px', gap: 16 }}>
-        <span style={{ fontSize: 11, color: '#555' }}>{logicalSize.w} × {logicalSize.h} px</span>
-        <span style={{ fontSize: 11, color: '#555' }}>{Math.round(zoom * 100)}%</span>
-        <span style={{ fontSize: 11, color: '#555' }}>{objects.length} об'єктів</span>
-        {selectedObject && <span style={{ fontSize: 11, color: '#555' }}>Вибрано: {selectedObject.type}</span>}
-        <span style={{ fontSize: 11, color: '#444', marginLeft: 'auto' }}>
+      <div style={{ height: 26, background: '#12121f', borderTop: '1px solid #2d2d45', display: 'flex', alignItems: 'center', padding: '0 14px', gap: 0 }}>
+        <span style={{ fontSize: 11, color: '#6b6b90', paddingRight: 12 }}>{logicalSize.w} × {logicalSize.h} px</span>
+        <span style={{ width: 1, height: 14, background: '#2d2d45', marginRight: 12 }} />
+        <span style={{ fontSize: 11, color: '#6b6b90', paddingRight: 12 }}>{Math.round(zoom * 100)}%</span>
+        <span style={{ width: 1, height: 14, background: '#2d2d45', marginRight: 12 }} />
+        <span style={{ fontSize: 11, color: '#6b6b90', paddingRight: 12 }}>{objects.length} об'єктів</span>
+        {selectedObject && <>
+          <span style={{ width: 1, height: 14, background: '#2d2d45', marginRight: 12 }} />
+          <span style={{ fontSize: 11, color: '#8888aa' }}>▸ {selectedObject.type}</span>
+        </>}
+        <span style={{ flex: 1 }} />
+        <span style={{ fontSize: 10.5, color: '#3a3a55' }}>
           Ctrl+Z/Y — крок назад/вперед · Ctrl+S — зберегти · Del — видалити · Shift+drag — пропорційно
         </span>
       </div>
