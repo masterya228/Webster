@@ -74,6 +74,7 @@ export default function EditorPage() {
   const logicalSizeRef    = useRef({ w: 800, h: 600 });
   const isDirtyRef        = useRef(false);
   const bgHistoryTimer    = useRef<ReturnType<typeof setTimeout>>();
+  const autoSaveTimer     = useRef<ReturnType<typeof setInterval>>();
   const clipboardRef      = useRef<fabric.Object | null>(null);
   const lastPropsByType   = useRef<Record<string, { fill: string; stroke: string; strokeWidth: number; opacity: number }>>({});
 
@@ -472,9 +473,15 @@ export default function EditorPage() {
       pushHistory('🆕 Новий');
     }
 
+    // Auto-save every 60 s — only when there are unsaved changes
+    autoSaveTimer.current = setInterval(() => {
+      if (isDirtyRef.current) saveDesign();
+    }, 60_000);
+
     return () => {
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('beforeunload', onBeforeUnload);
+      clearInterval(autoSaveTimer.current);
       canvas.dispose();
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1081,7 +1088,7 @@ export default function EditorPage() {
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
               minWidth: '100%', minHeight: '100%',
-              padding: '48px 48px 48px 152px', boxSizing: 'border-box',
+              padding: '48px 96px 48px 96px', boxSizing: 'border-box',
             }}>
               <div style={{
                 boxShadow: '0 16px 64px rgba(0,0,0,.7), 0 0 0 1px rgba(108,99,255,.18)',
