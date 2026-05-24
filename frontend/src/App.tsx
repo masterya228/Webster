@@ -12,7 +12,6 @@ import ProtectedRoute from './components/ProtectedRoute';
 import ProfilePage from './pages/ProfilePage';
 import SharePage from './pages/SharePage';
 import AdminPage from './pages/AdminPage';
-import ResetPasswordPage from './pages/ResetPasswordPage';
 
 export default function App() {
   const init = useAuthStore((s) => s.init);
@@ -31,7 +30,6 @@ export default function App() {
       <Route path="/share/:id" element={<SharePage />} />
       <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
-      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
