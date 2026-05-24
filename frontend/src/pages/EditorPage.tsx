@@ -267,6 +267,23 @@ export default function EditorPage() {
 
     canvas.on('mouse:down', (opt: fabric.IEvent<MouseEvent>) => {
       const tool = activeToolRef.current;
+
+      if (tool === 'eyedropper') {
+        const p = canvas.getPointer(opt.e);
+        const el = canvas.getElement() as HTMLCanvasElement;
+        const ctx = el.getContext('2d');
+        if (ctx) {
+          const z = zoomRef.current;
+          const px = Math.round(p.x * z);
+          const py = Math.round(p.y * z);
+          const d = ctx.getImageData(px, py, 1, 1).data;
+          const hex = '#' + [d[0], d[1], d[2]].map(v => v.toString(16).padStart(2, '0')).join('');
+          setFillColor(hex);
+          setStrokeColor(hex);
+        }
+        return;
+      }
+
       if (!SHAPE_TOOLS.includes(tool)) return;
       if (opt.target) {
         canvas.setActiveObject(opt.target);
@@ -462,6 +479,13 @@ export default function EditorPage() {
       canvas.selection = false;
       canvas.defaultCursor = 'crosshair';
       canvas.getObjects().forEach(o => { o.selectable = false; o.evented = false; });
+    } else if (activeTool === 'eyedropper') {
+      canvas.isDrawingMode = false;
+      canvas.selection = false;
+      canvas.defaultCursor = 'crosshair';
+      canvas.discardActiveObject();
+      canvas.getObjects().forEach(o => { o.selectable = false; o.evented = false; });
+      canvas.renderAll();
     } else if (isShape) {
       canvas.isDrawingMode = false;
       canvas.selection = false;

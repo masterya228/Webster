@@ -103,6 +103,13 @@ const Ic = {
       <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
     </svg>
   ),
+  eyedropper: (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19.08 4.92a5 5 0 0 0-7.07 0l-1.5 1.5 7.07 7.07 1.5-1.5a5 5 0 0 0 0-7.07z"/>
+      <path d="M12.01 6.41L5.5 12.93a2 2 0 0 0 0 2.83l2.74 2.74a2 2 0 0 0 2.83 0l6.51-6.51"/>
+      <path d="M3 21l3.5-3.5"/>
+    </svg>
+  ),
 };
 
 export default function Toolbar({
@@ -198,7 +205,8 @@ export default function Toolbar({
 
       {sectionLabel('Малювання')}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '0 4px' }}>
-        {btn({ id: 'pencil', label: 'Олівець', icon: Ic.pencil })}
+        {btn({ id: 'pencil',      label: 'Олівець', icon: Ic.pencil })}
+        {btn({ id: 'eyedropper', label: 'Піпетка',  icon: Ic.eyedropper })}
       </div>
 
       <div>
