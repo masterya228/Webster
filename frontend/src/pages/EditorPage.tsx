@@ -1079,7 +1079,7 @@ export default function EditorPage() {
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               minWidth: '100%', minHeight: '100%',
-              padding: 48, boxSizing: 'border-box',
+              padding: 48, paddingLeft: 152, boxSizing: 'border-box',
             }}>
               <div style={{
                 boxShadow: '0 16px 64px rgba(0,0,0,.7), 0 0 0 1px rgba(108,99,255,.18)',
