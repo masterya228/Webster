@@ -10,7 +10,7 @@ import { TEMPLATES } from '../components/editor/TemplatesPanel';
 const SIZE_PRESETS = TEMPLATES.map(t => ({ label: t.label, width: t.width, height: t.height }));
 
 type MainTab = 'designs' | 'templates';
-type TplTab  = 'system' | 'mine';
+type TplTab  = 'system' | 'mine' | 'others';
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
@@ -18,7 +18,8 @@ export default function DashboardPage() {
 
   const [designs,      setDesigns]      = useState<Design[]>([]);
   const [shareDesignId, setShareDesignId] = useState<string | null>(null);
-  const [myTemplates,  setMyTemplates]  = useState<Template[]>([]);
+  const [myTemplates,    setMyTemplates]    = useState<Template[]>([]);
+  const [otherTemplates, setOtherTemplates] = useState<Template[]>([]);
   const [loading,      setLoading]      = useState(true);
   const [showNewModal, setShowNewModal] = useState(false);
   const [newTitle,     setNewTitle]     = useState('Untitled Design');
@@ -33,6 +34,7 @@ export default function DashboardPage() {
     Promise.all([
       api.get('/designs').then(r => setDesigns(r.data)),
       api.get('/templates/mine').then(r => setMyTemplates(r.data)),
+      api.get('/templates/others').then(r => setOtherTemplates(r.data)),
     ]).finally(() => setLoading(false));
   };
 
@@ -75,6 +77,7 @@ export default function DashboardPage() {
     if (!confirm('Видалити цей шаблон?')) return;
     await api.delete(`/templates/${id}`);
     setMyTemplates(prev => prev.filter(t => t.id !== id));
+    setOtherTemplates(prev => prev.filter(t => t.id !== id));
   };
 
   const formatDate = (d: string) =>
@@ -221,11 +224,12 @@ export default function DashboardPage() {
         ) : (
           <>
             <div style={{ display: 'flex', gap: 4, marginBottom: 20, background: 'var(--surface)', borderRadius: 'var(--radius-sm)', padding: 4, border: '1px solid var(--border)', width: 'fit-content' }}>
-              {tabBtn(`Системні (${TEMPLATES.length})`, tplTab === 'system', () => setTplTab('system'))}
-              {tabBtn(`Мої шаблони (${myTemplates.length})`, tplTab === 'mine', () => setTplTab('mine'))}
+              {tabBtn(`Системні (${TEMPLATES.length})`,            tplTab === 'system', () => setTplTab('system'))}
+              {tabBtn(`Мої шаблони (${myTemplates.length})`,        tplTab === 'mine',   () => setTplTab('mine'))}
+              {tabBtn(`Спільнота (${otherTemplates.length})`,       tplTab === 'others', () => setTplTab('others'))}
             </div>
 
-            {tplTab === 'system' ? (
+            {tplTab === 'system' && (
               <div className="grid-4">
                 {TEMPLATES.map(t => (
                   <ThumbCard key={t.id} title={t.label} sub={`${t.width}×${t.height} · ${t.category}`}
@@ -239,7 +243,9 @@ export default function DashboardPage() {
                   </ThumbCard>
                 ))}
               </div>
-            ) : myTemplates.length === 0 ? (
+            )}
+
+            {tplTab === 'mine' && (myTemplates.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '80px 0' }}>
                 <svg width="72" height="72" viewBox="0 0 72 72" fill="none" style={{ marginBottom: 20 }}>
                   <rect width="72" height="72" rx="18" fill="#f5f0ff"/>
@@ -270,11 +276,7 @@ export default function DashboardPage() {
                       <img src={t.thumbnail} alt={t.name} style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#fff' }}
                         onError={e => (e.currentTarget.style.display = 'none')} />
                     ) : (
-                      <div style={{
-                        height: '100%',
-                        background: `linear-gradient(135deg, ${(t.canvasData as any).background || '#6c63ff'} 0%, #a855f7 100%)`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
+                      <div style={{ height: '100%', background: `linear-gradient(135deg, ${(t.canvasData as any).background || '#6c63ff'} 0%, #a855f7 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
                           <rect x="4" y="4" width="32" height="32" rx="6" fill="rgba(255,255,255,0.2)"/>
                           <rect x="10" y="10" width="20" height="3" rx="1.5" fill="#fff" opacity=".8"/>
@@ -286,7 +288,45 @@ export default function DashboardPage() {
                   </ThumbCard>
                 ))}
               </div>
-            )}
+            ))}
+
+            {tplTab === 'others' && (otherTemplates.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '80px 0' }}>
+                <svg width="72" height="72" viewBox="0 0 72 72" fill="none" style={{ marginBottom: 20 }}>
+                  <rect width="72" height="72" rx="18" fill="#f0f9ff"/>
+                  <circle cx="36" cy="28" r="10" fill="none" stroke="#0ea5e9" strokeWidth="2"/>
+                  <path d="M16 58c0-11 9-18 20-18s20 7 20 18" fill="none" stroke="#0ea5e9" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+                <h2 style={{ marginBottom: 8 }}>Шаблонів спільноти ще немає</h2>
+                <p style={{ color: 'var(--text-muted)' }}>Коли інші користувачі збережуть шаблони — вони з'являться тут</p>
+              </div>
+            ) : (
+              <div className="grid-4">
+                {otherTemplates.map(t => (
+                  <ThumbCard
+                    key={t.id}
+                    title={t.name}
+                    sub={`${t.width}×${t.height} · ${(t as any).user?.name || 'Користувач'}`}
+                    onClick={() => createFromTemplate(t)}
+                    onDelete={user?.role === 'admin' ? e => deleteMyTemplate(t.id, e) : undefined}
+                  >
+                    {t.thumbnail ? (
+                      <img src={t.thumbnail} alt={t.name} style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#fff' }}
+                        onError={e => (e.currentTarget.style.display = 'none')} />
+                    ) : (
+                      <div style={{ height: '100%', background: `linear-gradient(135deg, ${(t.canvasData as any).background || '#0ea5e9'} 0%, #6c63ff 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                          <rect x="4" y="4" width="32" height="32" rx="6" fill="rgba(255,255,255,0.2)"/>
+                          <rect x="10" y="10" width="20" height="3" rx="1.5" fill="#fff" opacity=".8"/>
+                          <rect x="10" y="17" width="14" height="2" rx="1" fill="#fff" opacity=".5"/>
+                          <rect x="10" y="23" width="18" height="2" rx="1" fill="#fff" opacity=".5"/>
+                        </svg>
+                      </div>
+                    )}
+                  </ThumbCard>
+                ))}
+              </div>
+            ))}
           </>
         )}
       </div>

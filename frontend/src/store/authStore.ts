@@ -22,7 +22,17 @@ export const useAuthStore = create<AuthState>((set) => ({
   token: _token,
   loading: false,
 
-  init() {},
+  async init() {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    try {
+      const { data } = await api.get('/users/me');
+      localStorage.setItem('user', JSON.stringify(data));
+      set({ user: data });
+    } catch {
+      // token expired or invalid — leave current state, login page will handle 401
+    }
+  },
 
   async login(email, password) {
     set({ loading: true });

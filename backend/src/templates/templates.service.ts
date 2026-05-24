@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Repository } from 'typeorm';
+import { IsNull, Not, Repository } from 'typeorm';
 import { Template } from './entities/template.entity';
 import { CreateUserTemplateDto } from './dto/create-user-template.dto';
 
@@ -48,6 +48,15 @@ export class TemplatesService implements OnModuleInit {
     return this.templatesRepository.find({ where: { userId }, order: { createdAt: 'DESC' } });
   }
 
+  /** Templates created by OTHER users (community) */
+  async findOtherUsersTemplates(userId: string): Promise<Template[]> {
+    return this.templatesRepository.find({
+      where: { userId: Not(IsNull()) },
+      order: { createdAt: 'DESC' },
+      relations: ['user'],
+    });
+  }
+
   async findOne(id: string): Promise<Template> {
     return this.templatesRepository.findOneOrFail({ where: { id } });
   }
@@ -65,11 +74,11 @@ export class TemplatesService implements OnModuleInit {
     return this.templatesRepository.save(tpl);
   }
 
-  async deleteUserTemplate(id: string, userId: string): Promise<void> {
+  async deleteUserTemplate(id: string, userId: string, isAdmin = false): Promise<void> {
     const tpl = await this.templatesRepository.findOne({ where: { id } });
     if (!tpl) throw new NotFoundException('Template not found');
     if (!tpl.userId) throw new ForbiddenException('Cannot delete system templates');
-    if (tpl.userId !== userId) throw new ForbiddenException('Not your template');
+    if (!isAdmin && tpl.userId !== userId) throw new ForbiddenException('Not your template');
     await this.templatesRepository.remove(tpl);
   }
 }

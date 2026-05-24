@@ -22,6 +22,12 @@ export class TemplatesController {
     return this.templatesService.findUserTemplates(req.user.id);
   }
 
+  /** Community templates — all user-created templates from other users */
+  @Get('others')
+  findOthers(@Request() req) {
+    return this.templatesService.findOtherUsersTemplates(req.user.id);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.templatesService.findOne(id);
@@ -34,6 +40,7 @@ export class TemplatesController {
 
   @Delete(':id')
   remove(@Param('id') id: string, @Request() req) {
-    return this.templatesService.deleteUserTemplate(id, req.user.id);
+    const isAdmin = req.user.role === 'admin';
+    return this.templatesService.deleteUserTemplate(id, req.user.id, isAdmin);
   }
 }

@@ -51,7 +51,7 @@ export class AuthService {
     }
 
     const token = this.jwtService.sign({ sub: user.id, email: user.email });
-    return { token, user: { id: user.id, email: user.email, name: user.name, avatar: user.avatar } };
+    return { token, user: { id: user.id, email: user.email, name: user.name, avatar: user.avatar, role: user.role } };
   }
 
   async verifyEmail(token: string) {
@@ -65,7 +65,7 @@ export class AuthService {
     const jwtToken = this.jwtService.sign({ sub: user.id, email: user.email });
     return {
       token: jwtToken,
-      user: { id: user.id, email: user.email, name: user.name, avatar: user.avatar },
+      user: { id: user.id, email: user.email, name: user.name, avatar: user.avatar, role: user.role },
     };
   }
 
@@ -87,7 +87,7 @@ export class AuthService {
     const token = this.jwtService.sign({ sub: user.id, email: user.email });
     return {
       token,
-      user: { id: user.id, email: user.email, name: user.name, avatar: user.avatar },
+      user: { id: user.id, email: user.email, name: user.name, avatar: user.avatar, role: user.role },
     };
   }
 }
