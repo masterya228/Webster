@@ -112,7 +112,7 @@ export class UsersService {
 
   async createPasswordResetToken(email: string): Promise<{ user: User; token: string } | null> {
     const user = await this.usersRepository.findOne({ where: { email } });
-    if (!user || !user.password) return null; // silently ignore unknown/google accounts
+    if (!user) return null; // silently ignore unknown accounts
     const token = this.generateToken();
     const expiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
     user.resetPasswordToken = token;
