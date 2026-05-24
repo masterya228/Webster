@@ -196,31 +196,19 @@ export default function EditorPage() {
     const oldZ = zoomRef.current;
     const clampedZ = Math.max(0.1, Math.min(5, newZ));
 
-    // Record logical canvas point under cursor BEFORE zoom
-    // Use canvas element's own getBoundingClientRect — works regardless of wrapper layout
+    // 1. Read cursor position relative to canvas BEFORE zoom
     let logicalX = -1, logicalY = -1;
-    let scrollDeltaX = 0, scrollDeltaY = 0;
-    if (cursorClient && wrapper) {
-      const canvasEl = c.getElement() as HTMLCanvasElement;
-      const cr = canvasEl.getBoundingClientRect();
+    if (cursorClient) {
+      const cr = (c.getElement() as HTMLCanvasElement).getBoundingClientRect();
       const cx = cursorClient.x - cr.left;
       const cy = cursorClient.y - cr.top;
       if (cx >= 0 && cy >= 0 && cx <= cr.width && cy <= cr.height) {
         logicalX = cx / oldZ;
         logicalY = cy / oldZ;
-        // Canvas offset inside the scrollable area (accounts for centering via inner div)
-        const wrapperRect = wrapper.getBoundingClientRect();
-        const canvasInScrollX = cr.left - wrapperRect.left + wrapper.scrollLeft;
-        const canvasInScrollY = cr.top  - wrapperRect.top  + wrapper.scrollTop;
-        // After zoom the canvas grows/shrinks; the logical point will be at:
-        //   canvasInScroll (unchanged, inner div keeps canvas anchored) + logicalX * clampedZ
-        // We want it at: wrapper.scrollLeft + (cursorClient.x - wrapperRect.left)
-        // → new scrollLeft = canvasInScrollX + logicalX*clampedZ − (cursorClient.x − wrapperRect.left)
-        scrollDeltaX = canvasInScrollX + logicalX * clampedZ - (cursorClient.x - wrapperRect.left);
-        scrollDeltaY = canvasInScrollY + logicalY * clampedZ - (cursorClient.y - wrapperRect.top);
       }
     }
 
+    // 2. Apply zoom — changes the canvas DOM element's CSS size synchronously
     c.setZoom(clampedZ);
     c.setViewportTransform([clampedZ, 0, 0, clampedZ, 0, 0]);
     c.setDimensions({ width: w * clampedZ, height: h * clampedZ });
@@ -228,10 +216,17 @@ export default function EditorPage() {
     zoomRef.current = clampedZ;
     setZoom(clampedZ);
 
-    if (logicalX >= 0 && wrapper) {
-      // Apply scroll synchronously — inner div layout re-runs BEFORE next paint
-      wrapper.scrollLeft = Math.max(0, scrollDeltaX);
-      wrapper.scrollTop  = Math.max(0, scrollDeltaY);
+    // 3. getBoundingClientRect() forces a synchronous reflow — the browser re-runs
+    //    the flex centering layout, so crAfter reflects the canvas's TRUE new position.
+    //    No requestAnimationFrame needed.
+    if (logicalX >= 0 && cursorClient && wrapper) {
+      const crAfter = (c.getElement() as HTMLCanvasElement).getBoundingClientRect();
+      // Logical point is now at this screen X/Y:
+      const pointX = crAfter.left + logicalX * clampedZ;
+      const pointY = crAfter.top  + logicalY * clampedZ;
+      // Scroll to keep it exactly under the cursor
+      wrapper.scrollLeft = Math.max(0, wrapper.scrollLeft + (pointX - cursorClient.x));
+      wrapper.scrollTop  = Math.max(0, wrapper.scrollTop  + (pointY - cursorClient.y));
     }
   }, []);
 
