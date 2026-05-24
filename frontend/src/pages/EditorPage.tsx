@@ -1074,12 +1074,14 @@ export default function EditorPage() {
               backgroundSize: '22px 22px',
             }}
           >
-            {/* Inner div: centering layer — min-size = scroll viewport so centering works
-                when canvas is small; grows with canvas when it's large (no left-clip bug) */}
+            {/* Inner div: at least viewport size, grows with canvas.
+                justify-content:flex-start so canvas always starts at paddingLeft (152px)
+                — no left-overflow that would make the left edge unreachable by scrolling.
+                align-items:center keeps vertical centering when canvas is shorter than viewport. */}
             <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
               minWidth: '100%', minHeight: '100%',
-              padding: 48, paddingLeft: 152, boxSizing: 'border-box',
+              padding: '48px 48px 48px 152px', boxSizing: 'border-box',
             }}>
               <div style={{
                 boxShadow: '0 16px 64px rgba(0,0,0,.7), 0 0 0 1px rgba(108,99,255,.18)',
