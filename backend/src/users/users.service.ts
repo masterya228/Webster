@@ -4,6 +4,8 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 import { User } from './entities/user.entity';
+import { Design } from '../designs/entities/design.entity';
+import { Template } from '../templates/entities/template.entity';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
@@ -11,6 +13,10 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(Design)
+    private designsRepository: Repository<Design>,
+    @InjectRepository(Template)
+    private templatesRepository: Repository<Template>,
   ) {}
 
   generateToken(): string {
@@ -102,6 +108,14 @@ export class UsersService {
   async removeAvatar(id: string): Promise<User> {
     await this.usersRepository.update(id, { avatar: null });
     return this.findById(id);
+  }
+
+  async deleteAccount(id: string): Promise<void> {
+    // Explicitly remove dependent rows first to avoid FK constraint issues
+    // regardless of whether the DB has ON DELETE CASCADE configured
+    await this.templatesRepository.delete({ userId: id });
+    await this.designsRepository.delete({ userId: id });
+    await this.usersRepository.delete(id);
   }
 
   async updateProfile(id: string, dto: UpdateProfileDto): Promise<User> {

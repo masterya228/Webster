@@ -11,6 +11,7 @@ import VerifyEmailPage from './pages/VerifyEmailPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import ProfilePage from './pages/ProfilePage';
 import SharePage from './pages/SharePage';
+import AdminPage from './pages/AdminPage';
 
 export default function App() {
   const init = useAuthStore((s) => s.init);
@@ -25,6 +26,7 @@ export default function App() {
       <Route path="/editor/:id" element={<ProtectedRoute><EditorPage /></ProtectedRoute>} />
       <Route path="/editor/new" element={<ProtectedRoute><EditorPage /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+      <Route path="/admin"   element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
       <Route path="/share/:id" element={<SharePage />} />
       <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />

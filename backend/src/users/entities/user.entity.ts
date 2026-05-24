@@ -30,6 +30,9 @@ export class User {
   @Column({ type: 'text', nullable: true })
   avatar: string;
 
+  @Column({ default: 'user' })
+  role: 'user' | 'admin';
+
   @Column({ default: false })
   isVerified: boolean;
 

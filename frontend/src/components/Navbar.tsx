@@ -34,6 +34,11 @@ export default function Navbar() {
         {user ? (
           <>
             <Link to="/dashboard" className="btn btn-ghost btn-sm">Dashboard</Link>
+            {user.role === 'admin' && (
+              <Link to="/admin" className="btn btn-ghost btn-sm" style={{ color: '#f59e0b', fontWeight: 600 }}>
+                ⚙ Адмін
+              </Link>
+            )}
             <Link to="/editor/new" className="btn btn-primary btn-sm">+ Новий дизайн</Link>
 
             <Link to="/profile" title="Мій профіль" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>

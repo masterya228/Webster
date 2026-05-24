@@ -33,4 +33,10 @@ export class UsersController {
   async removeAvatar(@Request() req) {
     return this.usersService.removeAvatar(req.user.id);
   }
+
+  @Delete('me')
+  async deleteAccount(@Request() req) {
+    await this.usersService.deleteAccount(req.user.id);
+    return { success: true };
+  }
 }
