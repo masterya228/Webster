@@ -83,6 +83,25 @@ export class AuthService {
     return { message: 'Лист відправлено повторно' };
   }
 
+  async forgotPassword(email: string) {
+    const result = await this.usersService.createPasswordResetToken(email);
+    // Always return success to prevent email enumeration
+    if (result) {
+      await this.emailService
+        .sendPasswordResetEmail(result.user.email, result.user.name, result.token)
+        .catch(err => console.error('[Auth] Reset email error:', err?.message));
+    }
+    return { message: 'Якщо акаунт існує — лист із посиланням надіслано на вашу пошту.' };
+  }
+
+  async resetPassword(token: string, password: string) {
+    if (!password || password.length < 6) {
+      throw new BadRequestException('Пароль має бути не менше 6 символів');
+    }
+    await this.usersService.resetPasswordByToken(token, password);
+    return { message: 'Пароль успішно змінено. Тепер ви можете увійти.' };
+  }
+
   signTokenForUser(user: User) {
     const token = this.jwtService.sign({ sub: user.id, email: user.email });
     return {

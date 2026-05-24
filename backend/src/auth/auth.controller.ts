@@ -47,6 +47,18 @@ export class AuthController {
     return this.authService.resendVerification(email);
   }
 
+  @Post('forgot-password')
+  @ApiOperation({ summary: 'Надіслати лист для скидання пароля' })
+  forgotPassword(@Body('email') email: string) {
+    return this.authService.forgotPassword(email);
+  }
+
+  @Post('reset-password')
+  @ApiOperation({ summary: 'Скинути пароль за токеном' })
+  resetPassword(@Body() body: { token: string; password: string }) {
+    return this.authService.resetPassword(body.token, body.password);
+  }
+
   @ApiExcludeEndpoint()
   @Get('google')
   @UseGuards(GoogleAuthGuard)

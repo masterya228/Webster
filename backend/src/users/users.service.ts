@@ -110,6 +110,27 @@ export class UsersService {
     return this.findById(id);
   }
 
+  async createPasswordResetToken(email: string): Promise<{ user: User; token: string } | null> {
+    const user = await this.usersRepository.findOne({ where: { email } });
+    if (!user || !user.password) return null; // silently ignore unknown/google accounts
+    const token = this.generateToken();
+    const expiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    user.resetPasswordToken = token;
+    user.resetPasswordExpiry = expiry;
+    await this.usersRepository.save(user);
+    return { user, token };
+  }
+
+  async resetPasswordByToken(token: string, newPassword: string): Promise<void> {
+    const user = await this.usersRepository.findOne({ where: { resetPasswordToken: token } });
+    if (!user || !user.resetPasswordExpiry) throw new BadRequestException('Посилання недійсне');
+    if (new Date() > user.resetPasswordExpiry) throw new BadRequestException('Посилання застаріло. Запросіть нове.');
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.resetPasswordToken = null;
+    user.resetPasswordExpiry = null;
+    await this.usersRepository.save(user);
+  }
+
   async deleteAccount(id: string): Promise<void> {
     // Explicitly remove dependent rows first to avoid FK constraint issues
     // regardless of whether the DB has ON DELETE CASCADE configured

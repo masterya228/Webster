@@ -14,6 +14,24 @@ export default function LoginPage() {
   const { login, loading } = useAuthStore();
   const navigate = useNavigate();
 
+  // forgot-password state
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotStatus, setForgotStatus] = useState<'idle' | 'loading' | 'sent' | 'error'>('idle');
+  const [forgotError, setForgotError] = useState('');
+
+  const handleForgot = async (e: FormEvent) => {
+    e.preventDefault();
+    setForgotStatus('loading'); setForgotError('');
+    try {
+      await api.post('/auth/forgot-password', { email: forgotEmail });
+      setForgotStatus('sent');
+    } catch (err: any) {
+      setForgotError(err?.response?.data?.message || 'Помилка. Спробуйте ще раз.');
+      setForgotStatus('error');
+    }
+  };
+
   const searchParams = new URLSearchParams(window.location.search);
   const googleError = searchParams.get('error');
 
@@ -53,6 +71,38 @@ export default function LoginPage() {
           <Logo size={32} textSize={22} />
         </Link>
 
+        {/* ── Forgot password panel ── */}
+        {showForgot ? (
+          <>
+            <h1 style={{ fontSize: 24, marginBottom: 6 }}>Скидання пароля</h1>
+            <p style={{ color: 'var(--text-muted)', marginBottom: 28, fontSize: 14 }}>Введіть email — ми надішлемо посилання для відновлення</p>
+
+            {forgotStatus === 'sent' ? (
+              <div style={{ background: '#d1fae5', border: '1px solid #6ee7b7', borderRadius: 10, padding: '20px 20px', textAlign: 'center' }}>
+                <div style={{ fontSize: 32, marginBottom: 8 }}>📬</div>
+                <p style={{ color: '#065f46', fontWeight: 600, marginBottom: 4 }}>Лист надіслано!</p>
+                <p style={{ color: '#047857', fontSize: 13 }}>Перевірте скриньку <strong>{forgotEmail}</strong>. Посилання дійсне 1 годину.</p>
+              </div>
+            ) : (
+              <form onSubmit={handleForgot} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div>
+                  <label className="label">Email</label>
+                  <input className="input" type="email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} placeholder="john@example.com" required autoFocus />
+                </div>
+                {forgotError && <p className="error-text">{forgotError}</p>}
+                <button className="btn btn-primary" type="submit" disabled={forgotStatus === 'loading'} style={{ width: '100%', justifyContent: 'center', padding: '12px' }}>
+                  {forgotStatus === 'loading' ? <span className="spinner" /> : 'Надіслати посилання'}
+                </button>
+              </form>
+            )}
+
+            <button onClick={() => { setShowForgot(false); setForgotStatus('idle'); setForgotError(''); }}
+              style={{ width: '100%', marginTop: 16, background: 'none', border: 'none', color: 'var(--primary)', fontSize: 14, cursor: 'pointer', fontWeight: 500 }}>
+              ← Повернутись до входу
+            </button>
+          </>
+        ) : (
+        <>
         <h1 style={{ fontSize: 24, marginBottom: 6 }}>З поверненням</h1>
         <p style={{ color: 'var(--text-muted)', marginBottom: 28, fontSize: 14 }}>Увійдіть, щоб продовжити роботу</p>
 
@@ -62,7 +112,13 @@ export default function LoginPage() {
             <input className="input" type="email" value={email} onChange={(e) => { setEmail(e.target.value); setUnverifiedEmail(''); setError(''); }} placeholder="john@example.com" required />
           </div>
           <div>
-            <label className="label">Пароль</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <label className="label" style={{ marginBottom: 0 }}>Пароль</label>
+              <button type="button" onClick={() => { setShowForgot(true); setForgotEmail(email); setForgotStatus('idle'); }}
+                style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 12, cursor: 'pointer', fontWeight: 500, padding: 0 }}>
+                Забули пароль?
+              </button>
+            </div>
             <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Ваш пароль" required />
           </div>
 
@@ -119,6 +175,8 @@ export default function LoginPage() {
           Немає акаунту?{' '}
           <Link to="/register" style={{ color: 'var(--primary)', fontWeight: 500 }}>Зареєструватися безкоштовно</Link>
         </p>
+        </>
+        )}
       </div>
     </div>
   );

@@ -40,6 +40,13 @@ export class User {
   @Exclude()
   verificationToken: string;
 
+  @Column({ nullable: true })
+  @Exclude()
+  resetPasswordToken: string;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  resetPasswordExpiry: Date;
+
   @OneToMany(() => Design, (design) => design.user)
   designs: Design[];
 
