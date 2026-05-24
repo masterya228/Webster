@@ -1,56 +1,55 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import * as nodemailer from 'nodemailer';
+import { Transporter } from 'nodemailer';
 
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  private apiKey: string;
+  private transporter: Transporter | null = null;
   private fromEmail: string;
   private fromName: string;
 
   constructor(private config: ConfigService) {
-    this.apiKey = config.get<string>('BREVO_API_KEY', '');
-    this.fromEmail = config.get('MAIL_FROM_EMAIL', 'noreply@example.com');
-    this.fromName = config.get('MAIL_FROM_NAME', 'Webster');
+    this.fromEmail = config.get('MAIL_FROM_EMAIL', config.get('MAIL_USER', 'noreply@example.com'));
+    this.fromName  = config.get('MAIL_FROM_NAME', 'Vizora');
 
-    if (!this.apiKey) {
-      this.logger.warn('BREVO_API_KEY is not set — emails will not be sent');
-    } else {
-      this.logger.log(`Email service ready (Brevo) — from: ${this.fromName} <${this.fromEmail}>`);
+    const host = config.get<string>('MAIL_HOST');
+    const user = config.get<string>('MAIL_USER');
+    const pass = config.get<string>('MAIL_PASS');
+
+    if (!host || !user || !pass) {
+      this.logger.warn('SMTP credentials not set (MAIL_HOST / MAIL_USER / MAIL_PASS) — emails will not be sent');
+      return;
     }
+
+    this.transporter = nodemailer.createTransport({
+      host,
+      port: config.get<number>('MAIL_PORT', 587),
+      secure: config.get<string>('MAIL_SECURE', 'false') === 'true',
+      auth: { user, pass },
+    });
+
+    this.logger.log(`Email service ready (SMTP: ${host}) — from: ${this.fromName} <${this.fromEmail}>`);
   }
 
   private async send(to: string, subject: string, html: string): Promise<void> {
-    if (!this.apiKey) {
-      this.logger.warn(`Skipping email to ${to} — BREVO_API_KEY not set`);
+    if (!this.transporter) {
+      this.logger.warn(`Skipping email to ${to} — SMTP not configured`);
       return;
     }
 
     try {
-      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
-        method: 'POST',
-        headers: {
-          accept: 'application/json',
-          'api-key': this.apiKey,
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({
-          sender: { name: this.fromName, email: this.fromEmail },
-          to: [{ email: to }],
-          subject,
-          htmlContent: html,
-        }),
+      const info = await this.transporter.sendMail({
+        from: `"${this.fromName}" <${this.fromEmail}>`,
+        to,
+        subject,
+        html,
       });
-
-      if (!res.ok) {
-        const text = await res.text();
-        this.logger.error(`Failed to send email to ${to}: ${res.status} ${text}`);
-      } else {
-        const data = await res.json() as any;
-        this.logger.log(`Email sent to ${to} (messageId: ${data.messageId})`);
-      }
-    } catch (err) {
+      this.logger.log(`Email sent to ${to} (messageId: ${info.messageId})`);
+    } catch (err: any) {
       this.logger.error(`Failed to send email to ${to}: ${err.message}`);
+      throw err;
     }
   }
 
@@ -82,15 +81,11 @@ export class EmailService {
 </head>
 <body>
   <div class="wrap">
-    <div class="header">
-      <div class="logo">Vizora</div>
-    </div>
+    <div class="header"><div class="logo">Vizora</div></div>
     <div class="body">
       <h2>Привіт, ${name}!</h2>
       <p>Дякуємо за реєстрацію в Vizora. Щоб активувати акаунт і почати створювати дизайни — підтвердіть свою електронну пошту.</p>
-      <p style="text-align:center">
-        <a href="${link}" class="btn">Підтвердити пошту</a>
-      </p>
+      <p style="text-align:center"><a href="${link}" class="btn">Підтвердити пошту</a></p>
       <p style="font-size:13px">Якщо кнопка не працює, скопіюйте посилання:</p>
       <p><a href="${link}" class="link">${link}</a></p>
       <p style="font-size:13px;color:#bbb">Посилання дійсне 24 години. Якщо ви не реєструвалися — проігноруйте цей лист.</p>
@@ -135,9 +130,7 @@ export class EmailService {
     <div class="body">
       <h2>Привіт, ${name}!</h2>
       <p>Ми отримали запит на скидання пароля для вашого акаунту Vizora.</p>
-      <p style="text-align:center">
-        <a href="${link}" class="btn">Скинути пароль</a>
-      </p>
+      <p style="text-align:center"><a href="${link}" class="btn">Скинути пароль</a></p>
       <p style="font-size:13px">Якщо кнопка не працює, скопіюйте посилання:</p>
       <p><a href="${link}" class="link">${link}</a></p>
       <p style="font-size:13px;color:#bbb">Посилання дійсне 1 годину. Якщо ви не запитували скидання — просто проігноруйте цей лист.</p>
@@ -171,9 +164,7 @@ export class EmailService {
 </head>
 <body>
   <div class="wrap">
-    <div class="header">
-      <div class="logo">Vizora</div>
-    </div>
+    <div class="header"><div class="logo">Vizora</div></div>
     <div class="body">
       <h2>Привіт, ${name}!</h2>
       <p>Ваш акаунт Vizora успішно підтверджено. Ласкаво просимо!</p>
