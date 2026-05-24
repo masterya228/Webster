@@ -37,6 +37,39 @@ const FILTER_PRESETS = [
 
 const SHAPE_TOOLS = ['draw-rect','draw-circle','draw-rounded-rect','draw-diamond','draw-trapezoid','draw-right-triangle'];
 
+const PANEL_STYLES = `
+  .props-panel input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    height: 4px; border-radius: 2px; outline: none; cursor: pointer;
+    background: var(--border);
+  }
+  .props-panel input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--primary); cursor: pointer;
+    box-shadow: 0 0 0 3px rgba(108,99,255,.2);
+  }
+  .props-panel input[type="range"]::-moz-range-thumb {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--primary); cursor: pointer; border: none;
+    box-shadow: 0 0 0 3px rgba(108,99,255,.2);
+  }
+  .props-panel input[type="color"] {
+    -webkit-appearance: none; appearance: none;
+    padding: 0; border: none; border-radius: 6px; cursor: pointer;
+    background: none;
+  }
+  .props-panel input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; border-radius: 6px; }
+  .props-panel input[type="color"]::-webkit-color-swatch { border: none; border-radius: 6px; }
+  .props-panel input[type="color"]::-moz-color-swatch { border: none; border-radius: 6px; }
+  .props-panel select {
+    color: var(--text); background: var(--bg);
+  }
+  .props-panel select option {
+    background: var(--bg); color: var(--text);
+  }
+`;
+
 export default function PropertiesPanel({ selectedObject, canvas, onUpdate, background, onBackgroundChange, historySteps, historyIndex, onJumpHistory, toolProps }: PropertiesPanelProps) {
   const obj = selectedObject;
   const tp = toolProps;
@@ -86,12 +119,15 @@ export default function PropertiesPanel({ selectedObject, canvas, onUpdate, back
   );
 
   return (
-    <div style={{ width: 270, background: 'var(--surface)', borderLeft: '1px solid var(--border)', padding: '16px', overflowY: 'auto', flexShrink: 0 }}>
+    <div className="props-panel" style={{ width: 270, background: 'var(--surface)', borderLeft: '1px solid var(--border)', padding: '16px', overflowY: 'auto', flexShrink: 0 }}>
+      <style>{PANEL_STYLES}</style>
       <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Властивості</h3>
 
       {sectionTitle('Фон полотна')}
-      <input type="color" value={background} onChange={(e) => onBackgroundChange(e.target.value)}
-        style={{ width: '100%', height: 36, borderRadius: 6, border: '1px solid var(--border)', cursor: 'pointer', padding: 2 }} />
+      <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden', height: 36 }}>
+        <input type="color" value={background} onChange={(e) => onBackgroundChange(e.target.value)}
+          style={{ width: '100%', height: '100%', display: 'block' }} />
+      </div>
 
       {!obj && SHAPE_TOOLS.includes(tp.activeTool) && (
         <>
@@ -101,18 +137,22 @@ export default function PropertiesPanel({ selectedObject, canvas, onUpdate, back
               onChange={e => { if (!e.target.checked && tp.fillMode === 'both') tp.setFillMode('outline'); else if (e.target.checked) tp.setFillMode(tp.fillMode === 'outline' ? (tp.strokeColor !== 'transparent' ? 'both' : 'filled') : tp.fillMode); }}
               style={{ accentColor: 'var(--primary)', width: 14, height: 14, cursor: 'pointer', flexShrink: 0 }} />
             <label htmlFor="tl-fill" style={{ fontSize: 12, color: 'var(--text-muted)', width: 56, flexShrink: 0, cursor: 'pointer' }}>Заливка</label>
-            <input type="color" value={tp.fillColor} disabled={tp.fillMode === 'outline'}
-              onChange={e => tp.setFillColor(e.target.value)}
-              style={{ flex: 1, height: 30, borderRadius: 6, border: '1px solid var(--border)', cursor: tp.fillMode !== 'outline' ? 'pointer' : 'not-allowed', padding: 2, opacity: tp.fillMode !== 'outline' ? 1 : 0.4 }} />
+            <div style={{ flex: 1, height: 30, borderRadius: 6, border: '1px solid var(--border)', overflow: 'hidden', opacity: tp.fillMode !== 'outline' ? 1 : 0.4 }}>
+              <input type="color" value={tp.fillColor} disabled={tp.fillMode === 'outline'}
+                onChange={e => tp.setFillColor(e.target.value)}
+                style={{ width: '100%', height: '100%', cursor: tp.fillMode !== 'outline' ? 'pointer' : 'not-allowed' }} />
+            </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <input type="checkbox" id="tl-stroke" checked={tp.fillMode !== 'filled'}
               onChange={e => { if (!e.target.checked && tp.fillMode === 'filled') return; tp.setFillMode(e.target.checked ? (tp.fillMode === 'filled' ? 'both' : tp.fillMode) : 'filled'); }}
               style={{ accentColor: 'var(--primary)', width: 14, height: 14, cursor: 'pointer', flexShrink: 0 }} />
             <label htmlFor="tl-stroke" style={{ fontSize: 12, color: 'var(--text-muted)', width: 56, flexShrink: 0, cursor: 'pointer' }}>Контур</label>
-            <input type="color" value={tp.strokeColor} disabled={tp.fillMode === 'filled'}
-              onChange={e => tp.setStrokeColor(e.target.value)}
-              style={{ flex: 1, height: 30, borderRadius: 6, border: '1px solid var(--border)', cursor: tp.fillMode !== 'filled' ? 'pointer' : 'not-allowed', padding: 2, opacity: tp.fillMode !== 'filled' ? 1 : 0.4 }} />
+            <div style={{ flex: 1, height: 30, borderRadius: 6, border: '1px solid var(--border)', overflow: 'hidden', opacity: tp.fillMode !== 'filled' ? 1 : 0.4 }}>
+              <input type="color" value={tp.strokeColor} disabled={tp.fillMode === 'filled'}
+                onChange={e => tp.setStrokeColor(e.target.value)}
+                style={{ width: '100%', height: '100%', cursor: tp.fillMode !== 'filled' ? 'pointer' : 'not-allowed' }} />
+            </div>
           </div>
           {tp.fillMode !== 'filled' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -136,8 +176,10 @@ export default function PropertiesPanel({ selectedObject, canvas, onUpdate, back
           {sectionTitle('Олівець')}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <label style={{ fontSize: 12, color: 'var(--text-muted)', width: 72, flexShrink: 0 }}>Колір</label>
-            <input type="color" value={tp.fillColor} onChange={e => tp.setFillColor(e.target.value)}
-              style={{ flex: 1, height: 30, borderRadius: 6, border: '1px solid var(--border)', cursor: 'pointer', padding: 2 }} />
+            <div style={{ flex: 1, height: 30, borderRadius: 6, border: '1px solid var(--border)', overflow: 'hidden' }}>
+              <input type="color" value={tp.fillColor} onChange={e => tp.setFillColor(e.target.value)}
+                style={{ width: '100%', height: '100%', cursor: 'pointer' }} />
+            </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <label style={{ fontSize: 12, color: 'var(--text-muted)', width: 72, flexShrink: 0 }}>Розмір</label>
@@ -175,9 +217,11 @@ export default function PropertiesPanel({ selectedObject, canvas, onUpdate, back
             <>
               {sectionTitle('Олівець')}
               {row('Колір', (
-                <input type="color" value={(obj as any).stroke || '#000000'}
-                  onChange={(e) => set('stroke', e.target.value)}
-                  style={{ width: '100%', height: 30, borderRadius: 6, border: '1px solid var(--border)', cursor: 'pointer', padding: 2 }} />
+                <div style={{ height: 30, borderRadius: 6, border: '1px solid var(--border)', overflow: 'hidden' }}>
+                  <input type="color" value={(obj as any).stroke || '#000000'}
+                    onChange={(e) => set('stroke', e.target.value)}
+                    style={{ width: '100%', height: '100%', cursor: 'pointer' }} />
+                </div>
               ))}
               {row('Розмір', numInput('strokeWidth', (obj as any).strokeWidth, 1, 200))}
               {row('Прозорість', (
@@ -203,18 +247,22 @@ export default function PropertiesPanel({ selectedObject, canvas, onUpdate, back
                         onChange={e => { if (!e.target.checked && !hasStroke) return; set('fill', e.target.checked ? fillVal : 'transparent'); }}
                         style={{ accentColor: 'var(--primary)', width: 14, height: 14, cursor: 'pointer', flexShrink: 0 }} />
                       <label htmlFor="chk-fill" style={{ fontSize: 12, color: 'var(--text-muted)', width: 56, flexShrink: 0, cursor: 'pointer' }}>Заливка</label>
-                      <input type="color" value={fillVal} disabled={!hasFill}
-                        onChange={e => set('fill', e.target.value)}
-                        style={{ flex: 1, height: 30, borderRadius: 6, border: '1px solid var(--border)', cursor: hasFill ? 'pointer' : 'not-allowed', padding: 2, opacity: hasFill ? 1 : 0.4 }} />
+                      <div style={{ flex: 1, height: 30, borderRadius: 6, border: '1px solid var(--border)', overflow: 'hidden', opacity: hasFill ? 1 : 0.4 }}>
+                        <input type="color" value={fillVal} disabled={!hasFill}
+                          onChange={e => set('fill', e.target.value)}
+                          style={{ width: '100%', height: '100%', cursor: hasFill ? 'pointer' : 'not-allowed' }} />
+                      </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                       <input type="checkbox" id="chk-stroke" checked={hasStroke}
                         onChange={e => { if (!e.target.checked && !hasFill) return; set('stroke', e.target.checked ? strokeVal : 'transparent'); }}
                         style={{ accentColor: 'var(--primary)', width: 14, height: 14, cursor: 'pointer', flexShrink: 0 }} />
                       <label htmlFor="chk-stroke" style={{ fontSize: 12, color: 'var(--text-muted)', width: 56, flexShrink: 0, cursor: 'pointer' }}>Контур</label>
-                      <input type="color" value={strokeVal} disabled={!hasStroke}
-                        onChange={e => set('stroke', e.target.value)}
-                        style={{ flex: 1, height: 30, borderRadius: 6, border: '1px solid var(--border)', cursor: hasStroke ? 'pointer' : 'not-allowed', padding: 2, opacity: hasStroke ? 1 : 0.4 }} />
+                      <div style={{ flex: 1, height: 30, borderRadius: 6, border: '1px solid var(--border)', overflow: 'hidden', opacity: hasStroke ? 1 : 0.4 }}>
+                        <input type="color" value={strokeVal} disabled={!hasStroke}
+                          onChange={e => set('stroke', e.target.value)}
+                          style={{ width: '100%', height: '100%', cursor: hasStroke ? 'pointer' : 'not-allowed' }} />
+                      </div>
                     </div>
                     {hasStroke && row('Товщина', numInput('strokeWidth', (obj as any).strokeWidth, 0, 50))}
                   </>
@@ -235,9 +283,11 @@ export default function PropertiesPanel({ selectedObject, canvas, onUpdate, back
               ))}
               {row('Розмір', numInput('fontSize', (obj as any).fontSize, 6, 300))}
               {row('Колір', (
-                <input type="color" value={(obj as any).fill || '#000000'}
-                  onChange={(e) => set('fill', e.target.value)}
-                  style={{ width: '100%', height: 32, borderRadius: 6, border: '1px solid var(--border)', cursor: 'pointer', padding: 2 }} />
+                <div style={{ height: 30, borderRadius: 6, border: '1px solid var(--border)', overflow: 'hidden' }}>
+                  <input type="color" value={(obj as any).fill || '#000000'}
+                    onChange={(e) => set('fill', e.target.value)}
+                    style={{ width: '100%', height: '100%', cursor: 'pointer' }} />
+                </div>
               ))}
               <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
                 {['bold', 'italic', 'underline'].map((style) => (

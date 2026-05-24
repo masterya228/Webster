@@ -274,12 +274,15 @@ export default function EditorPage() {
         const ctx = el.getContext('2d');
         if (ctx) {
           const z = zoomRef.current;
-          const px = Math.round(p.x * z);
-          const py = Math.round(p.y * z);
+          const dpr = window.devicePixelRatio || 1;
+          const px = Math.round(p.x * z * dpr);
+          const py = Math.round(p.y * z * dpr);
           const d = ctx.getImageData(px, py, 1, 1).data;
           const hex = '#' + [d[0], d[1], d[2]].map(v => v.toString(16).padStart(2, '0')).join('');
           setFillColor(hex);
           setStrokeColor(hex);
+          fillColorRef.current   = hex;
+          strokeColorRef.current = hex;
         }
         return;
       }
@@ -466,6 +469,8 @@ export default function EditorPage() {
   useEffect(() => {
     const canvas = fabricRef.current;
     if (!canvas) return;
+    // Eyedropper only needs setup once when switching to it — not on every color change
+    if (activeTool === 'eyedropper') return;
     const isBrush = activeTool === 'pencil';
     const isShape = SHAPE_TOOLS.includes(activeTool);
 
@@ -508,6 +513,17 @@ export default function EditorPage() {
     canvas.freeDrawingBrush.width = Math.max(1, brushSize / 4);
     (canvas.freeDrawingBrush as any).opacity = opacity;
   }, [fillColor, brushSize, opacity, activeTool]);
+
+  useEffect(() => {
+    const canvas = fabricRef.current;
+    if (!canvas || activeTool !== 'eyedropper') return;
+    canvas.isDrawingMode = false;
+    canvas.selection = false;
+    canvas.defaultCursor = 'crosshair';
+    canvas.discardActiveObject();
+    canvas.getObjects().forEach(o => { o.selectable = false; o.evented = false; });
+    canvas.renderAll();
+  }, [activeTool]);
 
   const handleBackgroundChange = (color: string) => {
     setBackground(color);
