@@ -196,10 +196,11 @@ export default function EditorPage() {
     const oldZ = zoomRef.current;
     const clampedZ = Math.max(0.1, Math.min(5, newZ));
 
-    // Compute cursor's logical canvas coords relative to the canvas element itself
-    // (works correctly regardless of centering/scrolling in the wrapper)
+    // Record logical canvas point under cursor BEFORE zoom
+    // Use canvas element's own getBoundingClientRect — works regardless of wrapper layout
     let logicalX = -1, logicalY = -1;
-    if (cursorClient) {
+    let scrollDeltaX = 0, scrollDeltaY = 0;
+    if (cursorClient && wrapper) {
       const canvasEl = c.getElement() as HTMLCanvasElement;
       const cr = canvasEl.getBoundingClientRect();
       const cx = cursorClient.x - cr.left;
@@ -207,6 +208,16 @@ export default function EditorPage() {
       if (cx >= 0 && cy >= 0 && cx <= cr.width && cy <= cr.height) {
         logicalX = cx / oldZ;
         logicalY = cy / oldZ;
+        // Canvas offset inside the scrollable area (accounts for centering via inner div)
+        const wrapperRect = wrapper.getBoundingClientRect();
+        const canvasInScrollX = cr.left - wrapperRect.left + wrapper.scrollLeft;
+        const canvasInScrollY = cr.top  - wrapperRect.top  + wrapper.scrollTop;
+        // After zoom the canvas grows/shrinks; the logical point will be at:
+        //   canvasInScroll (unchanged, inner div keeps canvas anchored) + logicalX * clampedZ
+        // We want it at: wrapper.scrollLeft + (cursorClient.x - wrapperRect.left)
+        // → new scrollLeft = canvasInScrollX + logicalX*clampedZ − (cursorClient.x − wrapperRect.left)
+        scrollDeltaX = canvasInScrollX + logicalX * clampedZ - (cursorClient.x - wrapperRect.left);
+        scrollDeltaY = canvasInScrollY + logicalY * clampedZ - (cursorClient.y - wrapperRect.top);
       }
     }
 
@@ -217,19 +228,10 @@ export default function EditorPage() {
     zoomRef.current = clampedZ;
     setZoom(clampedZ);
 
-    // After DOM reflow (rAF), adjust scroll so the hovered canvas point stays under cursor
-    if (logicalX >= 0 && cursorClient && wrapper) {
-      requestAnimationFrame(() => {
-        if (!wrapper || !c) return;
-        const canvasEl = c.getElement() as HTMLCanvasElement;
-        const cr = canvasEl.getBoundingClientRect();
-        // Where did the logical point end up on screen after resize + reflow?
-        const pointScreenX = cr.left + logicalX * clampedZ;
-        const pointScreenY = cr.top  + logicalY * clampedZ;
-        // Scroll to compensate
-        wrapper.scrollLeft += pointScreenX - cursorClient.x;
-        wrapper.scrollTop  += pointScreenY - cursorClient.y;
-      });
+    if (logicalX >= 0 && wrapper) {
+      // Apply scroll synchronously — inner div layout re-runs BEFORE next paint
+      wrapper.scrollLeft = Math.max(0, scrollDeltaX);
+      wrapper.scrollTop  = Math.max(0, scrollDeltaY);
     }
   }, []);
 
@@ -1067,22 +1069,29 @@ export default function EditorPage() {
         )}
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {/* Outer div: scroll container — never centers itself, just clips + scrolls */}
           <div
             ref={canvasWrapRef}
             style={{
               flex: 1, overflow: 'auto',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
               background: '#191927',
               backgroundImage: 'radial-gradient(circle, #2a2a40 1px, transparent 1px)',
               backgroundSize: '22px 22px',
-              padding: 48,
             }}
           >
+            {/* Inner div: centering layer — min-size = scroll viewport so centering works
+                when canvas is small; grows with canvas when it's large (no left-clip bug) */}
             <div style={{
-              boxShadow: '0 16px 64px rgba(0,0,0,.7), 0 0 0 1px rgba(108,99,255,.18)',
-              flexShrink: 0, display: 'inline-block', borderRadius: 2,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              minWidth: '100%', minHeight: '100%',
+              padding: 48, boxSizing: 'border-box',
             }}>
-              <canvas ref={canvasRef} />
+              <div style={{
+                boxShadow: '0 16px 64px rgba(0,0,0,.7), 0 0 0 1px rgba(108,99,255,.18)',
+                flexShrink: 0, display: 'inline-block', borderRadius: 2,
+              }}>
+                <canvas ref={canvasRef} />
+              </div>
             </div>
           </div>
         </div>
