@@ -41,6 +41,7 @@ function getObjectIcon(obj: fabric.Object): string {
     if (lbl.startsWith('⏢')) return '⏢';
     if (lbl.startsWith('◺')) return '◺';
     if (lbl.startsWith('▢')) return '▢';
+    if (lbl.startsWith('→')) return '→';
     return '✏';
   }
   return '◈';

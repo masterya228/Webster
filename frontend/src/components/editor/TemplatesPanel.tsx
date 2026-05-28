@@ -605,11 +605,10 @@ export const TEMPLATES: Template[] = [
   },
 ];
 
-import React, { useState } from 'react';
+import React from 'react';
 
 interface Props {
   onApply: (tpl: Template | any) => void;
-  onApplyCustom: (w: number, h: number) => void;
   onClose: () => void;
   userTemplates?: any[];
   onSaveAsTemplate?: () => void;
@@ -622,18 +621,7 @@ const BORDER = '#2d2d45';
 
 const categories = Array.from(new Set(TEMPLATES.map(t => t.category)));
 
-const PRESETS = [
-  { label: 'HD (1920×1080)',    w: 1920, h: 1080 },
-  { label: 'A4 (794×1123)',     w: 794,  h: 1123 },
-  { label: 'Square (800×800)',  w: 800,  h: 800  },
-  { label: 'Story (1080×1920)', w: 1080, h: 1920 },
-];
-
-export default function TemplatesPanel({ onApply, onApplyCustom, onClose, userTemplates = [], onSaveAsTemplate, onDeleteUserTemplate, savingTemplate }: Props) {
-  const [showCustomModal, setShowCustomModal] = useState(false);
-  const [customW, setCustomW] = useState(800);
-  const [customH, setCustomH] = useState(600);
-
+export default function TemplatesPanel({ onApply, onClose, userTemplates = [], onSaveAsTemplate, onDeleteUserTemplate, savingTemplate }: Props) {
   const numStyle: React.CSSProperties = {
     width: '100%', padding: '7px 10px', borderRadius: 8,
     border: `1px solid ${BORDER}`, fontSize: 14,
@@ -730,19 +718,6 @@ export default function TemplatesPanel({ onApply, onApplyCustom, onClose, userTe
           )}
         </div>
 
-        {/* Власний розмір */}
-        <div>
-          <div style={{ fontSize: 10, fontWeight: 600, color: '#555', textTransform: 'uppercase', letterSpacing: '.06em', padding: '10px 0 6px' }}>
-            Власний розмір
-          </div>
-          <button onClick={() => setShowCustomModal(true)} style={{
-            width: '100%', padding: '7px 0', borderRadius: 7, border: `1px solid ${BORDER}`,
-            background: 'transparent', color: '#aaa', fontSize: 12, fontWeight: 600, cursor: 'pointer',
-          }}>
-            ✏ Задати розміри вручну…
-          </button>
-        </div>
-
         {/* Вбудовані шаблони по категоріях */}
         {categories.map(cat => (
           <div key={cat}>
@@ -780,73 +755,6 @@ export default function TemplatesPanel({ onApply, onApplyCustom, onClose, userTe
         ))}
       </div>
 
-      {/* Модальне вікно власного розміру */}
-      {showCustomModal && (
-        <div
-          onClick={() => setShowCustomModal(false)}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 1000,
-            background: 'rgba(0,0,0,0.55)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              background: '#1a1a2e', border: `1px solid ${BORDER}`, borderRadius: 14,
-              padding: 28, width: 340, boxShadow: '0 16px 48px rgba(0,0,0,.6)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-              <span style={{ fontSize: 15, fontWeight: 700, color: '#ddd' }}>Власний розмір полотна</span>
-              <button onClick={() => setShowCustomModal(false)} style={{ background: 'none', border: 'none', color: '#666', fontSize: 20, cursor: 'pointer', lineHeight: 1 }}>×</button>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-              <div>
-                <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>Ширина (px)</div>
-                <input type="number" min={1} max={10000} value={customW}
-                  onChange={e => setCustomW(Math.max(1, parseInt(e.target.value) || 1))}
-                  style={numStyle} />
-              </div>
-              <div>
-                <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>Висота (px)</div>
-                <input type="number" min={1} max={10000} value={customH}
-                  onChange={e => setCustomH(Math.max(1, parseInt(e.target.value) || 1))}
-                  style={numStyle} />
-              </div>
-            </div>
-
-            <div style={{ fontSize: 12, color: '#888', marginBottom: 8 }}>Швидкий вибір</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 20 }}>
-              {PRESETS.map(p => (
-                <button key={p.label} onClick={() => { setCustomW(p.w); setCustomH(p.h); }} style={{
-                  fontSize: 11, padding: '5px 10px', borderRadius: 6,
-                  border: `1px solid ${BORDER}`, background: customW === p.w && customH === p.h ? 'var(--primary)' : 'transparent',
-                  color: customW === p.w && customH === p.h ? '#fff' : '#999', cursor: 'pointer',
-                }}>
-                  {p.label}
-                </button>
-              ))}
-            </div>
-
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setShowCustomModal(false)} style={{
-                flex: 1, padding: '9px 0', borderRadius: 8, border: `1px solid ${BORDER}`,
-                background: 'transparent', color: '#aaa', fontSize: 13, cursor: 'pointer',
-              }}>
-                Скасувати
-              </button>
-              <button onClick={() => { onApplyCustom(customW, customH); setShowCustomModal(false); }} style={{
-                flex: 2, padding: '9px 0', borderRadius: 8, border: 'none',
-                background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
-              }}>
-                Застосувати {customW} × {customH}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

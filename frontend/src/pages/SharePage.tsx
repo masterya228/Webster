@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Logo from '../components/Logo';
 import { fabric } from 'fabric';
@@ -23,6 +23,9 @@ export default function SharePage() {
   const [error,  setError]    = useState('');
   const [loading, setLoading] = useState(true);
   const [copied,  setCopied]  = useState(false);
+  const [viewZoom, setViewZoom] = useState(1);
+  const baseScaleRef = useRef(1); // fit-to-screen scale factor
+  const canvasWrapRef = useRef<HTMLDivElement>(null);
 
   const shareUrl = window.location.href;
 
@@ -57,14 +60,42 @@ export default function SharePage() {
 
     canvas.loadFromJSON(resolveCanvasJsonUrls(canvasData), () => {
       canvas.getObjects().forEach(o => { o.selectable = false; o.evented = false; o.hoverCursor = 'default'; });
-      // Apply scale after load so viewport is not reset
       canvas.setDimensions({ width: dispW, height: dispH });
       canvas.setViewportTransform([scale, 0, 0, scale, 0, 0]);
       canvas.renderAll();
+      baseScaleRef.current = scale;
+      setViewZoom(1);
     });
 
     return () => { canvas.dispose(); fabricRef.current = null; };
   }, [design]);
+
+  const changeZoom = useCallback((delta: number) => {
+    const c = fabricRef.current;
+    if (!c || !design) return;
+    setViewZoom(prev => {
+      const next = Math.max(0.2, Math.min(5, prev + delta));
+      const totalScale = baseScaleRef.current * next;
+      c.setZoom(totalScale);
+      c.setViewportTransform([totalScale, 0, 0, totalScale, 0, 0]);
+      c.setDimensions({ width: design.width * totalScale, height: design.height * totalScale });
+      c.renderAll();
+      return next;
+    });
+  }, [design]);
+
+  // Ctrl+scroll zoom on the canvas wrapper
+  useEffect(() => {
+    const el = canvasWrapRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      changeZoom(e.deltaY < 0 ? 0.15 : -0.15);
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [changeZoom]);
 
   const copyLink = () => {
     navigator.clipboard.writeText(shareUrl).then(() => {
@@ -109,8 +140,19 @@ export default function SharePage() {
           <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>{design?.width} × {design?.height} px</p>
         </div>
 
-        <div style={{ boxShadow: '0 8px 48px rgba(0,0,0,.18)', borderRadius: 4, overflow: 'hidden', display: 'inline-block', maxWidth: '100%' }}>
-          <canvas ref={canvasRef} />
+        <div ref={canvasWrapRef} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, maxWidth: '100%' }}>
+          <div style={{ overflow: 'auto', maxWidth: '100%', maxHeight: '65vh', borderRadius: 4, boxShadow: '0 8px 48px rgba(0,0,0,.18)' }}>
+            <canvas ref={canvasRef} style={{ display: 'block' }} />
+          </div>
+          {/* Zoom controls */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 24, padding: '4px 12px' }}>
+            <button onClick={() => changeZoom(-0.2)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--text)', lineHeight: 1, padding: '2px 4px' }} title="Зменшити">−</button>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)', minWidth: 44, textAlign: 'center' }}>{Math.round(viewZoom * 100)}%</span>
+            <button onClick={() => changeZoom(0.2)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--text)', lineHeight: 1, padding: '2px 4px' }} title="Збільшити">+</button>
+            <span style={{ width: 1, height: 16, background: 'var(--border)' }} />
+            <button onClick={() => changeZoom(1 - viewZoom)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: 'var(--text-muted)', padding: '2px 2px' }} title="Скинути">1:1</button>
+          </div>
+          <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}>Ctrl+колесо — масштаб</p>
         </div>
 
         <div style={{ width: '100%', maxWidth: 480, background: 'var(--surface)', borderRadius: 16, padding: 24, border: '1px solid var(--border)' }}>

@@ -8,6 +8,7 @@ import LayersPanel from '../components/editor/LayersPanel';
 import { FillMode } from '../components/editor/DrawingOptionsBar';
 import TemplatesPanel, { Template } from '../components/editor/TemplatesPanel';
 import StickersPanel from '../components/editor/StickersPanel';
+import CanvasSizePanel from '../components/editor/CanvasSizePanel';
 import ShareModal from '../components/editor/ShareModal';
 import { Design } from '../types';
 import api from '../api/client';
@@ -15,7 +16,7 @@ import { LogoMark } from '../components/Logo';
 
 const SHAPE_TOOLS = [
   'draw-rect','draw-circle',
-  'draw-rounded-rect','draw-diamond','draw-trapezoid','draw-right-triangle',
+  'draw-rounded-rect','draw-diamond','draw-trapezoid','draw-right-triangle','draw-arrow',
 ];
 const SHAPE_LABELS: Record<string, string> = {
   'draw-rect':           '▭ Прямокутник',
@@ -24,6 +25,7 @@ const SHAPE_LABELS: Record<string, string> = {
   'draw-diamond':        '◇ Ромб',
   'draw-trapezoid':      '⏢ Трапеція',
   'draw-right-triangle': '◺ Трикутник',
+  'draw-arrow':          '→ Стрілка',
 };
 
 function buildShape(
@@ -48,6 +50,16 @@ function buildShape(
     case 'draw-diamond': { const p = new fabric.Path(`M ${w/2} 0 L ${w} ${h/2} L ${w/2} ${h} L 0 ${h/2} Z`, common); p.set({ left, top }); return p; }
     case 'draw-trapezoid': { const p = new fabric.Path(`M ${w*.22} 0 L ${w*.78} 0 L ${w} ${h} L 0 ${h} Z`, common); p.set({ left, top }); return p; }
     case 'draw-right-triangle': { const p = new fabric.Path(`M 0 0 L 0 ${h} L ${w} ${h} Z`, common); p.set({ left, top }); return p; }
+    case 'draw-arrow': {
+      const bh = Math.max(1, h * 0.38); // body height
+      const by = (h - bh) / 2;          // body top Y
+      const hw = Math.min(w * 0.36, h); // head width
+      const hx = w - hw;                // head start X
+      const path = `M 0 ${by} L ${hx} ${by} L ${hx} 0 L ${w} ${h/2} L ${hx} ${h} L ${hx} ${by+bh} L 0 ${by+bh} Z`;
+      const p = new fabric.Path(path, common);
+      p.set({ left, top });
+      return p;
+    }
     default: return null;
   }
 }
@@ -74,7 +86,6 @@ export default function EditorPage() {
   const logicalSizeRef    = useRef({ w: 800, h: 600 });
   const isDirtyRef        = useRef(false);
   const bgHistoryTimer    = useRef<ReturnType<typeof setTimeout>>();
-  const autoSaveTimer     = useRef<ReturnType<typeof setInterval>>();
   const clipboardRef      = useRef<fabric.Object | null>(null);
   const lastPropsByType   = useRef<Record<string, { fill: string; stroke: string; strokeWidth: number; opacity: number }>>({});
 
@@ -92,6 +103,7 @@ export default function EditorPage() {
   const [showTemplates,  setShowTemplates]  = useState(false);
   const [showStickers,   setShowStickers]   = useState(false);
   const [showLayers,     setShowLayers]     = useState(true);
+  const [showCanvasSize, setShowCanvasSize] = useState(false);
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [showShare,      setShowShare]      = useState(false);
   const [isPublic,       setIsPublic]       = useState(false);
@@ -275,7 +287,7 @@ export default function EditorPage() {
       if (!suppressRef.current) refreshObjects();
     });
     canvas.on('object:removed', () => {
-      if (!suppressRef.current) pushHistory('🗑 Видалення');
+      if (!suppressRef.current) pushHistory('× Видалення');
       refreshObjects();
     });
 
@@ -405,7 +417,7 @@ export default function EditorPage() {
           }
           canvas.setActiveObject(cloned);
           canvas.renderAll();
-          pushHistory('📋 Вставка');
+          pushHistory('⊕ Вставка');
           refreshObjects();
           clipboardRef.current = cloned;
         });
@@ -415,6 +427,23 @@ export default function EditorPage() {
         if (active.length) { active.forEach(o => canvas.remove(o)); canvas.discardActiveObject(); canvas.renderAll(); }
       }
       if (e.key === 'Escape') setActiveTool('select');
+
+      // Move selected object(s) with arrow keys or WASD
+      const isArrow = e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown';
+      const isWASD  = k === 'w' || k === 'a' || k === 's' || k === 'd';
+      const isEditingFabric = canvas.getObjects().some(o => (o as any).isEditing);
+      if ((isArrow || isWASD) && !inInput && !isEditingFabric && !e.ctrlKey && !e.metaKey) {
+        const active = canvas.getActiveObjects();
+        if (active.length) {
+          e.preventDefault();
+          const step = e.shiftKey ? 10 : 1;
+          const dx = (e.key === 'ArrowRight' || k === 'd') ? step : (e.key === 'ArrowLeft' || k === 'a') ? -step : 0;
+          const dy = (e.key === 'ArrowDown'  || k === 's') ? step : (e.key === 'ArrowUp'   || k === 'w') ? -step : 0;
+          active.forEach(o => o.set({ left: (o.left ?? 0) + dx, top: (o.top ?? 0) + dy }));
+          canvas.requestRenderAll();
+          isDirtyRef.current = true;
+        }
+      }
     };
     window.addEventListener('keydown', onKey);
 
@@ -447,11 +476,11 @@ export default function EditorPage() {
               canvas.renderAll();
               suppressRef.current = false;
               canvas.setBackgroundColor(bg, canvas.renderAll.bind(canvas));
-              pushHistory('📂 Завантаження');
+              pushHistory('▸ Завантаження');
               refreshObjects();
             });
           } else {
-            pushHistory('📂 Завантаження');
+            pushHistory('▸ Завантаження');
             const sysId = searchParamsRef.current.get('sysTemplate');
             if (sysId) {
               import('../components/editor/TemplatesPanel').then(m => {
@@ -462,7 +491,7 @@ export default function EditorPage() {
           }
         } catch {
           suppressRef.current = false;
-          pushHistory('📂 Завантаження');
+          pushHistory('▸ Завантаження');
         }
       }).catch(() => navigate('/dashboard'));
     } else {
@@ -470,18 +499,12 @@ export default function EditorPage() {
       setLogicalSize({ w: 800, h: 600 });
       canvas.setDimensions({ width: 800, height: 600 });
       canvas.setViewportTransform([1,0,0,1,0,0]);
-      pushHistory('🆕 Новий');
+      pushHistory('+ Новий');
     }
-
-    // Auto-save every 60 s — only when there are unsaved changes
-    autoSaveTimer.current = setInterval(() => {
-      if (isDirtyRef.current) saveDesign();
-    }, 60_000);
 
     return () => {
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('beforeunload', onBeforeUnload);
-      clearInterval(autoSaveTimer.current);
       canvas.dispose();
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -656,7 +679,7 @@ export default function EditorPage() {
         img.set({ left: 50, top: 50, opacity: opacityRef.current });
         img.crossOrigin = 'anonymous';
         c.add(img); c.setActiveObject(img); c.renderAll();
-        pushHistory('🖼 Зображення');
+        pushHistory('◫ Зображення');
         refreshObjects();
       }, { crossOrigin: 'anonymous' });
     };
@@ -719,7 +742,7 @@ export default function EditorPage() {
     }
     c.renderAll();
     suppressRef.current = false;
-    pushHistory(`📋 ${label}`);
+    pushHistory(`◫ ${label}`);
     refreshObjects();
   };
 
@@ -757,7 +780,7 @@ export default function EditorPage() {
         c.setViewportTransform([zz,0,0,zz,0,0]);
         c.renderAll();
         suppressRef.current = false;
-        pushHistory(`📋 ${label}`);
+        pushHistory(`◫ ${label}`);
         refreshObjects();
       });
     } else {
@@ -774,7 +797,7 @@ export default function EditorPage() {
       }
       c.renderAll();
       suppressRef.current = false;
-      pushHistory(`📋 ${label}`);
+      pushHistory(`◫ ${label}`);
       refreshObjects();
     }
     setShowTemplates(false);
@@ -790,7 +813,7 @@ export default function EditorPage() {
     c.setDimensions({ width: w * z, height: h * z });
     c.setViewportTransform([z,0,0,z,0,0]);
     c.renderAll();
-    pushHistory(`📐 ${w}×${h}`);
+    pushHistory(`⊞ ${w}×${h}`);
     setShowTemplates(false);
   };
 
@@ -944,7 +967,7 @@ export default function EditorPage() {
         document.body.appendChild(printFrame);
         const doc = printFrame.contentDocument!;
         doc.open();
-        doc.write(`<!DOCTYPE html><html><head><style>
+        doc.write(`<!DOCTYPE html><html><head><title>${title}</title><style>
           @page{size:${w}px ${h}px;margin:0}
           body{margin:0;padding:0;width:${w}px;height:${h}px;overflow:hidden}
           img{width:${w}px;height:${h}px;display:block;object-fit:contain}
@@ -1011,14 +1034,23 @@ export default function EditorPage() {
           style={{ background: 'transparent', border: '1px solid #2d2d45', color: '#888', padding: '4px 10px', borderRadius: 5, cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 5, transition: 'border-color .15s, color .15s' }}
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = '#6c63ff'; (e.currentTarget as HTMLElement).style.color = '#bbb'; }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = '#2d2d45'; (e.currentTarget as HTMLElement).style.color = '#888'; }}>
-          🔗 Поширити
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+          Поширити
         </button>
         <button onClick={() => saveAsTemplate(undefined)} disabled={savingTemplate}
           title="Зберегти як мій шаблон"
           style={{ background: 'transparent', border: '1px solid #2d2d45', color: '#888', padding: '4px 10px', borderRadius: 5, cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 5, transition: 'border-color .15s, color .15s' }}
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = '#6c63ff'; (e.currentTarget as HTMLElement).style.color = '#bbb'; }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = '#2d2d45'; (e.currentTarget as HTMLElement).style.color = '#888'; }}>
-          {savingTemplate ? <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} /> : '📋'} Шаблон
+          {savingTemplate ? <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} /> : (
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+              <polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+            </svg>
+          )} Шаблон
         </button>
         <button onClick={saveDesign} disabled={saving} className="btn btn-primary btn-sm" style={{ minWidth: 88, justifyContent: 'center', fontSize: 12 }}>
           {saving ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : saved ? '✓ Збережено' : 'Зберегти'}
@@ -1038,6 +1070,8 @@ export default function EditorPage() {
           stickersOpen={showStickers}
           onToggleLayers={() => setShowLayers(v => !v)}
           layersOpen={showLayers}
+          onToggleCanvasSize={() => setShowCanvasSize(v => !v)}
+          canvasSizeOpen={showCanvasSize}
         />
 
         {showStickers && (
@@ -1050,12 +1084,20 @@ export default function EditorPage() {
         {showTemplates && (
           <TemplatesPanel
             onApply={applyTemplate}
-            onApplyCustom={applyCustomSize}
             onClose={() => setShowTemplates(false)}
             userTemplates={userTemplates}
             onSaveAsTemplate={() => saveAsTemplate(undefined)}
             onDeleteUserTemplate={deleteUserTemplate}
             savingTemplate={savingTemplate}
+          />
+        )}
+
+        {showCanvasSize && (
+          <CanvasSizePanel
+            currentW={logicalSize.w}
+            currentH={logicalSize.h}
+            onApply={(w, h) => { applyCustomSize(w, h); setShowCanvasSize(false); }}
+            onClose={() => setShowCanvasSize(false)}
           />
         )}
 
@@ -1088,7 +1130,7 @@ export default function EditorPage() {
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
               minWidth: '100%', minHeight: '100%',
-              padding: '48px 96px 48px 96px', boxSizing: 'border-box',
+              padding: 48, boxSizing: 'border-box',
             }}>
               <div style={{
                 boxShadow: '0 16px 64px rgba(0,0,0,.7), 0 0 0 1px rgba(108,99,255,.18)',

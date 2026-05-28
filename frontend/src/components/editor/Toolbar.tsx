@@ -19,6 +19,8 @@ interface ToolbarProps {
   stickersOpen: boolean;
   onToggleLayers: () => void;
   layersOpen: boolean;
+  onToggleCanvasSize: () => void;
+  canvasSizeOpen: boolean;
 }
 
 interface ToolDef { id: string; label: string; icon: React.ReactNode; action?: () => void; }
@@ -30,6 +32,7 @@ const SHAPES = [
   { id: 'draw-diamond',        label: 'Ромб',             icon: '◇' },
   { id: 'draw-trapezoid',      label: 'Трапеція',         icon: '⏢' },
   { id: 'draw-right-triangle', label: 'Прям. трикутник',  icon: '◺' },
+  { id: 'draw-arrow',          label: 'Стрілка',          icon: '→' },
 ];
 
 const BG     = '#1a1a2e';
@@ -64,6 +67,11 @@ const Ic = {
       <polygon points="12 2 2 7 12 12 22 7 12 2"/>
       <polyline points="2 17 12 22 22 17"/>
       <polyline points="2 12 12 17 22 12"/>
+    </svg>
+  ),
+  resize: (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
     </svg>
   ),
   templates: (
@@ -130,6 +138,7 @@ export default function Toolbar({
   onToggleTemplates, templatesOpen,
   onToggleStickers, stickersOpen,
   onToggleLayers, layersOpen,
+  onToggleCanvasSize, canvasSizeOpen,
 }: ToolbarProps) {
   const [shapesOpen, setShapesOpen] = useState(true);
 
@@ -251,8 +260,9 @@ export default function Toolbar({
 
       {sectionLabel('Сцена')}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '0 4px' }}>
-        {iconBtn('layers',    'Шари',    Ic.layers,    layersOpen,    onToggleLayers)}
-        {iconBtn('templates', 'Шаблони', Ic.templates, templatesOpen, onToggleTemplates)}
+        {iconBtn('layers',      'Шари',            Ic.layers,    layersOpen,      onToggleLayers)}
+        {iconBtn('canvas-size', 'Розмір полотна',  Ic.resize,    canvasSizeOpen,  onToggleCanvasSize)}
+        {iconBtn('templates',   'Шаблони',         Ic.templates, templatesOpen,   onToggleTemplates)}
       </div>
 
       <div style={{ flex: 1 }} />
