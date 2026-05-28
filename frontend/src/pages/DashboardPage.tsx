@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { useAuthStore } from '../store/authStore';
 import { Design, Template } from '../types';
 import { resolveUploadUrl } from '../utils/urls';
 import api from '../api/client';
 import { TEMPLATES } from '../components/editor/TemplatesPanel';
+import ConfirmModal from '../components/editor/ConfirmModal';
 
 const SIZE_PRESETS = TEMPLATES.map(t => ({ label: t.label, width: t.width, height: t.height }));
 
@@ -29,6 +30,9 @@ export default function DashboardPage() {
   const [showCustom,   setShowCustom]   = useState(false);
   const [activeTab,    setActiveTab]    = useState<MainTab>('designs');
   const [tplTab,       setTplTab]       = useState<TplTab>('system');
+  const [confirmModal, setConfirmModal] = useState<{
+    title: string; message: string; confirmLabel?: string; danger?: boolean; onConfirm: () => void;
+  } | null>(null);
 
   const fetchData = () => {
     Promise.all([
@@ -65,19 +69,33 @@ export default function DashboardPage() {
     navigate(`/editor/${data.id}`);
   };
 
-  const deleteDesign = async (id: string, e: React.MouseEvent) => {
+  const deleteDesign = (id: string, e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
-    if (!confirm('Видалити цей дизайн?')) return;
-    await api.delete(`/designs/${id}`);
-    setDesigns(prev => prev.filter(d => d.id !== id));
+    setConfirmModal({
+      title: 'Видалити дизайн?',
+      message: 'Цю дію неможливо скасувати.',
+      confirmLabel: 'Видалити', danger: true,
+      onConfirm: async () => {
+        setConfirmModal(null);
+        await api.delete(`/designs/${id}`);
+        setDesigns(prev => prev.filter(d => d.id !== id));
+      },
+    });
   };
 
-  const deleteMyTemplate = async (id: string, e: React.MouseEvent) => {
+  const deleteMyTemplate = (id: string, e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
-    if (!confirm('Видалити цей шаблон?')) return;
-    await api.delete(`/templates/${id}`);
-    setMyTemplates(prev => prev.filter(t => t.id !== id));
-    setOtherTemplates(prev => prev.filter(t => t.id !== id));
+    setConfirmModal({
+      title: 'Видалити шаблон?',
+      message: 'Цю дію неможливо скасувати.',
+      confirmLabel: 'Видалити', danger: true,
+      onConfirm: async () => {
+        setConfirmModal(null);
+        await api.delete(`/templates/${id}`);
+        setMyTemplates(prev => prev.filter(t => t.id !== id));
+        setOtherTemplates(prev => prev.filter(t => t.id !== id));
+      },
+    });
   };
 
   const formatDate = (d: string) =>
@@ -173,54 +191,55 @@ export default function DashboardPage() {
             <span className="spinner" style={{ width: 40, height: 40, borderWidth: 3 }} />
           </div>
         ) : activeTab === 'designs' ? (
-          designs.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '80px 0' }}>
-              <svg width="72" height="72" viewBox="0 0 72 72" fill="none" style={{ marginBottom: 20 }}>
-                <rect width="72" height="72" rx="18" fill="#ede9ff"/>
-                <rect x="14" y="22" width="44" height="30" rx="4" fill="#6c63ff" opacity=".2"/>
-                <rect x="20" y="28" width="20" height="3" rx="2" fill="#6c63ff"/>
-                <rect x="20" y="35" width="32" height="3" rx="2" fill="#6c63ff" opacity=".6"/>
-                <rect x="20" y="42" width="26" height="3" rx="2" fill="#6c63ff" opacity=".4"/>
-                <circle cx="52" cy="20" r="8" fill="#a855f7"/>
-                <line x1="49" y1="20" x2="55" y2="20" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
-                <line x1="52" y1="17" x2="52" y2="23" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-              <h2 style={{ marginBottom: 8 }}>Ще немає дизайнів</h2>
-              <p style={{ color: 'var(--text-muted)', marginBottom: 24 }}>Створіть свій перший шедевр!</p>
-              <button className="btn btn-primary btn-lg" onClick={() => setShowNewModal(true)}>Створити дизайн</button>
+          <div className="grid-4">
+            {/* Always-visible "New Project" card */}
+            <div className="card" style={{ overflow: 'hidden', cursor: 'pointer', transition: 'var(--transition)', border: '2px dashed var(--border)' }}
+              onClick={() => setShowNewModal(true)}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-3px)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--primary)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; }}
+            >
+              <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--primary-light)' }}>
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                  <circle cx="24" cy="24" r="22" fill="rgba(108,99,255,0.15)" stroke="#6c63ff" strokeWidth="1.5" strokeDasharray="4 3"/>
+                  <line x1="24" y1="14" x2="24" y2="34" stroke="#6c63ff" strokeWidth="2.5" strokeLinecap="round"/>
+                  <line x1="14" y1="24" x2="34" y2="24" stroke="#6c63ff" strokeWidth="2.5" strokeLinecap="round"/>
+                </svg>
+              </div>
+              <div style={{ padding: '12px 14px' }}>
+                <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--primary)', marginBottom: 4 }}>Новий проєкт</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Створити з нуля</div>
+              </div>
             </div>
-          ) : (
-            <div className="grid-4">
-              {designs.map(d => (
-                <Link key={d.id} to={`/editor/${d.id}`} style={{ display: 'block', textDecoration: 'none' }}>
-                  <ThumbCard
-                    title={d.title}
-                    sub={`${d.width}×${d.height} · ${formatDate(d.updatedAt)}`}
-                    onDelete={e => deleteDesign(d.id, e)}
-                    onShare={d.isPublic ? e => copyShareLink(d.id, e) : undefined}
-                    shareId={d.id}
-                  >
-                    {d.thumbnail ? (
-                      <img src={resolveUploadUrl(d.thumbnail)} alt={d.title} style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#fff' }}
-                        onError={e => (e.currentTarget.style.display = 'none')} />
-                    ) : (
-                      <div style={{ height: '100%', background: 'linear-gradient(135deg, var(--primary-light), #fde7f0)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <div style={{ textAlign: 'center' }}>
-                          <svg width="40" height="40" viewBox="0 0 40 40" fill="none" style={{ marginBottom: 6 }}>
-                            <rect width="40" height="40" rx="8" fill="rgba(108,99,255,0.15)"/>
-                            <rect x="6" y="10" width="28" height="20" rx="3" fill="none" stroke="#6c63ff" strokeWidth="1.5"/>
-                            <circle cx="13" cy="16" r="2" fill="#6c63ff"/>
-                            <polyline points="6 26 15 18 22 24 27 20 34 26" fill="none" stroke="#6c63ff" strokeWidth="1.5"/>
-                          </svg>
-                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{d.width}×{d.height}</div>
-                        </div>
+
+            {designs.map(d => (
+              <Link key={d.id} to={`/editor/${d.id}`} style={{ display: 'block', textDecoration: 'none' }}>
+                <ThumbCard
+                  title={d.title}
+                  sub={`${d.width}×${d.height} · ${formatDate(d.updatedAt)}`}
+                  onDelete={e => deleteDesign(d.id, e)}
+                  onShare={d.isPublic ? e => copyShareLink(d.id, e) : undefined}
+                  shareId={d.id}
+                >
+                  {d.thumbnail ? (
+                    <img src={resolveUploadUrl(d.thumbnail)} alt={d.title} style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#fff' }}
+                      onError={e => (e.currentTarget.style.display = 'none')} />
+                  ) : (
+                    <div style={{ height: '100%', background: 'linear-gradient(135deg, var(--primary-light), #fde7f0)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ textAlign: 'center' }}>
+                        <svg width="40" height="40" viewBox="0 0 40 40" fill="none" style={{ marginBottom: 6 }}>
+                          <rect width="40" height="40" rx="8" fill="rgba(108,99,255,0.15)"/>
+                          <rect x="6" y="10" width="28" height="20" rx="3" fill="none" stroke="#6c63ff" strokeWidth="1.5"/>
+                          <circle cx="13" cy="16" r="2" fill="#6c63ff"/>
+                          <polyline points="6 26 15 18 22 24 27 20 34 26" fill="none" stroke="#6c63ff" strokeWidth="1.5"/>
+                        </svg>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{d.width}×{d.height}</div>
                       </div>
-                    )}
-                  </ThumbCard>
-                </Link>
-              ))}
-            </div>
-          )
+                    </div>
+                  )}
+                </ThumbCard>
+              </Link>
+            ))}
+          </div>
         ) : (
           <>
             <div style={{ display: 'flex', gap: 4, marginBottom: 20, background: 'var(--surface)', borderRadius: 'var(--radius-sm)', padding: 4, border: '1px solid var(--border)', width: 'fit-content' }}>
@@ -387,6 +406,17 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {confirmModal && (
+        <ConfirmModal
+          title={confirmModal.title}
+          message={confirmModal.message}
+          confirmLabel={confirmModal.confirmLabel}
+          danger={confirmModal.danger}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => setConfirmModal(null)}
+        />
       )}
     </div>
   );

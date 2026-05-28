@@ -21,6 +21,10 @@ interface ToolbarProps {
   layersOpen: boolean;
   onToggleCanvasSize: () => void;
   canvasSizeOpen: boolean;
+  onToggleImages: () => void;
+  imagesOpen: boolean;
+  onToggleFilters: () => void;
+  filtersOpen: boolean;
 }
 
 interface ToolDef { id: string; label: string; icon: React.ReactNode; action?: () => void; }
@@ -127,6 +131,18 @@ const Ic = {
       <path d="M3 21l3.5-3.5"/>
     </svg>
   ),
+  gallery: (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+      <polyline points="21 15 16 10 5 21"/>
+    </svg>
+  ),
+  filter: (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/>
+    </svg>
+  ),
 };
 
 export default function Toolbar({
@@ -139,6 +155,8 @@ export default function Toolbar({
   onToggleStickers, stickersOpen,
   onToggleLayers, layersOpen,
   onToggleCanvasSize, canvasSizeOpen,
+  onToggleImages, imagesOpen,
+  onToggleFilters, filtersOpen,
 }: ToolbarProps) {
   const [shapesOpen, setShapesOpen] = useState(true);
 
@@ -253,9 +271,10 @@ export default function Toolbar({
 
       {sectionLabel("Об'єкти")}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '0 4px' }}>
-        {btn({ id: 'text',  label: 'Текст',      icon: Ic.text,  action: onAddText })}
-        {btn({ id: 'image', label: 'Зображення', icon: Ic.image, action: onUploadImage })}
-        {iconBtn('stickers', 'Стікери', Ic.sticker, stickersOpen, onToggleStickers)}
+        {btn({ id: 'text', label: 'Текст', icon: Ic.text, action: onAddText })}
+        {iconBtn('images',   'Зображення', Ic.gallery, imagesOpen,  onToggleImages)}
+        {iconBtn('stickers', 'Стікери',    Ic.sticker, stickersOpen, onToggleStickers)}
+        {iconBtn('filters',  'Фільтри',    Ic.filter,  filtersOpen,  onToggleFilters)}
       </div>
 
       {sectionLabel('Сцена')}

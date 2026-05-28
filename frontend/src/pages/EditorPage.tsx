@@ -9,6 +9,10 @@ import { FillMode } from '../components/editor/DrawingOptionsBar';
 import TemplatesPanel, { Template } from '../components/editor/TemplatesPanel';
 import StickersPanel from '../components/editor/StickersPanel';
 import CanvasSizePanel from '../components/editor/CanvasSizePanel';
+import ConfirmModal from '../components/editor/ConfirmModal';
+import ImagesPanel from '../components/editor/ImagesPanel';
+import FiltersPanel from '../components/editor/FiltersPanel';
+type FilterDef = { id: string; label: string; preview: string; fabricFilter: any };
 import ShareModal from '../components/editor/ShareModal';
 import { Design } from '../types';
 import api from '../api/client';
@@ -104,10 +108,25 @@ export default function EditorPage() {
   const [showStickers,   setShowStickers]   = useState(false);
   const [showLayers,     setShowLayers]     = useState(true);
   const [showCanvasSize, setShowCanvasSize] = useState(false);
+  const [showImages,     setShowImages]     = useState(false);
+  const [showFilters,    setShowFilters]    = useState(false);
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [showShare,      setShowShare]      = useState(false);
   const [isPublic,       setIsPublic]       = useState(false);
   const [userTemplates,  setUserTemplates]  = useState<any[]>([]);
+
+  // Confirm modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    title: string; message: string; confirmLabel?: string; danger?: boolean; onConfirm: () => void;
+  } | null>(null);
+  const showConfirm = (opts: typeof confirmModal) => setConfirmModal(opts);
+
+  // Template name prompt modal
+  const [tplNameModal, setTplNameModal] = useState(false);
+  const [tplNameValue, setTplNameValue] = useState('');
+
+  // Export dropdown
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   const [activeTool,  setActiveTool]  = useState('select');
   const [fillColor,   setFillColor]   = useState('#6c63ff');
@@ -664,6 +683,41 @@ export default function EditorPage() {
 
   const uploadImage = () => fileInputRef.current?.click();
 
+  const addImageFromUrl = (url: string) => {
+    const c = fabricRef.current;
+    if (!c) return;
+    fabric.Image.fromURL(url, (img) => {
+      const { w, h } = logicalSizeRef.current;
+      const maxDim = Math.min(w, h) * 0.5;
+      img.scale(Math.min(maxDim / (img.width || maxDim), maxDim / (img.height || maxDim)));
+      img.set({ left: 50, top: 50, opacity: opacityRef.current });
+      img.crossOrigin = 'anonymous';
+      c.add(img); c.setActiveObject(img); c.renderAll();
+      pushHistory('◫ Зображення');
+      refreshObjects();
+    }, { crossOrigin: 'anonymous' });
+    setActiveTool('select');
+    setShowImages(false);
+  };
+
+  const applyFilterToSelected = (filterDef: FilterDef) => {
+    const c = fabricRef.current;
+    if (!c) return;
+    const obj = c.getActiveObject() as any;
+    if (!obj) return;
+    // Works on fabric.Image; also works on any object via custom rendering
+    if (obj.type === 'image') {
+      const { type, ...params } = filterDef.fabricFilter;
+      const FClass = (fabric as any).Image.filters[type];
+      if (FClass) {
+        obj.filters = [new FClass(params)];
+        obj.applyFilters();
+        c.renderAll();
+        pushHistory(`⬡ Фільтр`);
+      }
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -750,7 +804,15 @@ export default function EditorPage() {
     const c = fabricRef.current;
     if (!c) return;
     const label = tpl.label ?? tpl.name ?? 'Шаблон';
-    if (!window.confirm(`Застосувати шаблон "${label}"?\nПоточний вміст буде замінено.`)) return;
+    showConfirm({
+      title: 'Застосувати шаблон?',
+      message: `Шаблон "${label}" буде застосовано.\nПоточний вміст полотна буде замінено.`,
+      confirmLabel: 'Застосувати',
+      onConfirm: () => { setConfirmModal(null); doApplyTemplate(c, tpl, label); },
+    });
+  };
+
+  const doApplyTemplate = (c: fabric.Canvas, tpl: Template | any, label: string) => {
     logicalSizeRef.current = { w: tpl.width, h: tpl.height };
     setLogicalSize({ w: tpl.width, h: tpl.height });
     const availW = window.innerWidth - 172 - 270 - 48;
@@ -806,15 +868,22 @@ export default function EditorPage() {
   const applyCustomSize = (w: number, h: number) => {
     const c = fabricRef.current;
     if (!c) return;
-    if (!window.confirm(`Змінити розмір полотна на ${w}×${h} px?\nОб'єкти залишаться, але можуть виходити за межі.`)) return;
-    logicalSizeRef.current = { w, h };
-    setLogicalSize({ w, h });
-    const z = zoomRef.current;
-    c.setDimensions({ width: w * z, height: h * z });
-    c.setViewportTransform([z,0,0,z,0,0]);
-    c.renderAll();
-    pushHistory(`⊞ ${w}×${h}`);
-    setShowTemplates(false);
+    showConfirm({
+      title: 'Змінити розмір полотна?',
+      message: `Нові розміри: ${w}×${h} px.\nОб'єкти залишаться, але можуть виходити за межі.`,
+      confirmLabel: 'Змінити',
+      onConfirm: () => {
+        setConfirmModal(null);
+        logicalSizeRef.current = { w, h };
+        setLogicalSize({ w, h });
+        const z = zoomRef.current;
+        c.setDimensions({ width: w * z, height: h * z });
+        c.setViewportTransform([z,0,0,z,0,0]);
+        c.renderAll();
+        pushHistory(`⊞ ${w}×${h}`);
+        setShowCanvasSize(false);
+      },
+    });
   };
 
   const generateThumbnail = (c: fabric.Canvas): Promise<Blob> =>
@@ -896,17 +965,24 @@ export default function EditorPage() {
     }
   }, []);
 
-  const saveAsTemplate = async (nameOverride?: string) => {
+  const saveAsTemplate = (nameOverride?: string) => {
+    if (nameOverride !== undefined) {
+      doSaveAsTemplate(nameOverride);
+    } else {
+      setTplNameValue(title);
+      setTplNameModal(true);
+    }
+  };
+
+  const doSaveAsTemplate = async (name: string) => {
     const c = fabricRef.current;
-    if (!c) return;
-    const name = nameOverride ?? window.prompt('Назва шаблону:', title);
-    if (!name) return;
+    if (!c || !name.trim()) return;
     setSavingTemplate(true);
     try {
       const canvasData = c.toJSON(['_label', '_locked', '_isSticker']);
       const thumbnail  = c.toDataURL({ format: 'jpeg', quality: 0.7, multiplier: 0.3 / zoomRef.current });
       await api.post('/templates', {
-        name,
+        name: name.trim(),
         width:  logicalSizeRef.current.w,
         height: logicalSizeRef.current.h,
         canvasData,
@@ -914,20 +990,25 @@ export default function EditorPage() {
       });
       await loadUserTemplates();
     } catch {
-      window.alert('Помилка збереження шаблону');
+      /* silent */
     } finally {
       setSavingTemplate(false);
     }
   };
 
-  const deleteUserTemplate = async (id: string) => {
-    if (!window.confirm('Видалити цей шаблон?')) return;
-    try {
-      await api.delete(`/templates/${id}`);
-      setUserTemplates(prev => prev.filter(t => t.id !== id));
-    } catch {
-      window.alert('Помилка видалення шаблону');
-    }
+  const deleteUserTemplate = (id: string) => {
+    showConfirm({
+      title: 'Видалити шаблон?',
+      message: 'Цю дію не можна скасувати.',
+      confirmLabel: 'Видалити', danger: true,
+      onConfirm: async () => {
+        setConfirmModal(null);
+        try {
+          await api.delete(`/templates/${id}`);
+          setUserTemplates(prev => prev.filter(t => t.id !== id));
+        } catch { /* silent */ }
+      },
+    });
   };
 
   const exportAs = (format: 'png' | 'jpeg' | 'svg' | 'pdf') => {
@@ -1021,14 +1102,33 @@ export default function EditorPage() {
         <div style={{ flex: 1 }} />
         <span style={{ fontSize: 11, color: '#444' }}>Ctrl+колесо — масштаб</span>
         <span style={{ width: 1, height: 20, background: '#2d2d45', flexShrink: 0 }} />
-        <span style={{ fontSize: 11, color: '#555', fontWeight: 500 }}>Експорт:</span>
-        {(['png','jpeg','svg','pdf'] as const).map(fmt => (
-          <button key={fmt} onClick={() => exportAs(fmt)} style={{ background: 'transparent', border: '1px solid #2d2d45', color: '#888', padding: '4px 8px', borderRadius: 5, cursor: 'pointer', fontSize: 11, fontWeight: 500, letterSpacing: '.04em', transition: 'border-color .15s, color .15s' }}
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={() => setShowExportMenu(v => !v)}
+            style={{ background: 'transparent', border: '1px solid #2d2d45', color: '#888', padding: '4px 11px', borderRadius: 5, cursor: 'pointer', fontSize: 11, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 5, transition: 'border-color .15s, color .15s' }}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = '#6c63ff'; (e.currentTarget as HTMLElement).style.color = '#bbb'; }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = '#2d2d45'; (e.currentTarget as HTMLElement).style.color = '#888'; }}>
-            {fmt.toUpperCase()}
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Експорт ▾
           </button>
-        ))}
+          {showExportMenu && (
+            <>
+              <div style={{ position: 'fixed', inset: 0, zIndex: 199 }} onClick={() => setShowExportMenu(false)} />
+              <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: '#16162a', border: '1px solid #2d2d45', borderRadius: 10, padding: '6px 0', zIndex: 200, minWidth: 130, boxShadow: '0 8px 32px rgba(0,0,0,.5)' }}>
+                {(['PNG','JPEG','SVG','PDF'] as const).map(fmt => (
+                  <button key={fmt} onClick={() => { exportAs(fmt.toLowerCase() as any); setShowExportMenu(false); }}
+                    style={{ display: 'block', width: '100%', padding: '8px 16px', background: 'transparent', border: 'none', color: '#bbb', fontSize: 12, fontWeight: 500, cursor: 'pointer', textAlign: 'left', transition: 'background .12s' }}
+                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#2d2d45'}
+                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
+                    {fmt}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
         <span style={{ width: 1, height: 20, background: '#2d2d45', flexShrink: 0 }} />
         <button onClick={() => setShowShare(true)}
           style={{ background: 'transparent', border: '1px solid #2d2d45', color: '#888', padding: '4px 10px', borderRadius: 5, cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 5, transition: 'border-color .15s, color .15s' }}
@@ -1064,20 +1164,59 @@ export default function EditorPage() {
           onDelete={deleteSelected} onUndo={undo} onRedo={redo}
           onBringForward={bringForward} onSendBackward={sendBackward}
           onBringToFront={bringToFront} onSendToBack={sendToBack}
-          onToggleTemplates={() => { setShowTemplates(v => { if (!v) loadUserTemplates(); return !v; }); setShowStickers(false); }}
+          onToggleTemplates={() => {
+            const next = !showTemplates;
+            if (next) { loadUserTemplates(); setShowStickers(false); setShowCanvasSize(false); setShowImages(false); setShowFilters(false); }
+            setShowTemplates(next);
+          }}
           templatesOpen={showTemplates}
-          onToggleStickers={() => { setShowStickers(v => !v); setShowTemplates(false); }}
+          onToggleStickers={() => {
+            const next = !showStickers;
+            if (next) { setShowTemplates(false); setShowCanvasSize(false); setShowImages(false); setShowFilters(false); }
+            setShowStickers(next);
+          }}
           stickersOpen={showStickers}
           onToggleLayers={() => setShowLayers(v => !v)}
           layersOpen={showLayers}
-          onToggleCanvasSize={() => setShowCanvasSize(v => !v)}
+          onToggleCanvasSize={() => {
+            const next = !showCanvasSize;
+            if (next) { setShowTemplates(false); setShowStickers(false); setShowImages(false); setShowFilters(false); }
+            setShowCanvasSize(next);
+          }}
           canvasSizeOpen={showCanvasSize}
+          onToggleImages={() => {
+            const next = !showImages;
+            if (next) { setShowTemplates(false); setShowStickers(false); setShowCanvasSize(false); setShowFilters(false); }
+            setShowImages(next);
+          }}
+          imagesOpen={showImages}
+          onToggleFilters={() => {
+            const next = !showFilters;
+            if (next) { setShowTemplates(false); setShowStickers(false); setShowCanvasSize(false); setShowImages(false); }
+            setShowFilters(next);
+          }}
+          filtersOpen={showFilters}
         />
 
         {showStickers && (
           <StickersPanel
             onAddSticker={addSticker}
             onClose={() => setShowStickers(false)}
+          />
+        )}
+
+        {showImages && (
+          <ImagesPanel
+            onAddImageUrl={addImageFromUrl}
+            onUploadFile={() => { fileInputRef.current?.click(); setShowImages(false); }}
+            onClose={() => setShowImages(false)}
+          />
+        )}
+
+        {showFilters && (
+          <FiltersPanel
+            onApplyFilter={applyFilterToSelected}
+            onClose={() => setShowFilters(false)}
           />
         )}
 
@@ -1096,7 +1235,7 @@ export default function EditorPage() {
           <CanvasSizePanel
             currentW={logicalSize.w}
             currentH={logicalSize.h}
-            onApply={(w, h) => { applyCustomSize(w, h); setShowCanvasSize(false); }}
+            onApply={(w, h) => applyCustomSize(w, h)}
             onClose={() => setShowCanvasSize(false)}
           />
         )}
@@ -1123,12 +1262,12 @@ export default function EditorPage() {
               backgroundSize: '22px 22px',
             }}
           >
-            {/* Inner div: at least viewport size, grows with canvas.
-                justify-content:flex-start so canvas always starts at paddingLeft (152px)
-                — no left-overflow that would make the left edge unreachable by scrolling.
-                align-items:center keeps vertical centering when canvas is shorter than viewport. */}
+            {/* Inner div: at least viewport size, centers canvas when smaller than viewport.
+                min-width/height:100% + justify/align center = centered when small.
+                When canvas + padding exceeds viewport, inner div grows and outer div scrolls.
+                Symmetric padding ensures both edges are reachable at scrollLeft=0. */}
             <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
               minWidth: '100%', minHeight: '100%',
               padding: 48, boxSizing: 'border-box',
             }}>
@@ -1177,6 +1316,42 @@ export default function EditorPage() {
           isPublic={isPublic}
           onTogglePublic={togglePublic}
           onClose={() => setShowShare(false)}
+        />
+      )}
+
+      {tplNameModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+          onMouseDown={e => { if (e.target === e.currentTarget) setTplNameModal(false); }}>
+          <div className="card fade-in" style={{ background: '#16162a', border: '1px solid #2d2d45', borderRadius: 14, padding: '24px 28px', maxWidth: 360, width: '100%', boxShadow: '0 24px 80px rgba(0,0,0,.6)' }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#d0d0e8', marginBottom: 14 }}>Назва шаблону</div>
+            <input
+              autoFocus
+              value={tplNameValue}
+              onChange={e => setTplNameValue(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { setTplNameModal(false); doSaveAsTemplate(tplNameValue); } if (e.key === 'Escape') setTplNameModal(false); }}
+              style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #2d2d45', background: '#1e1e30', color: '#d0d0e8', fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 16 }}
+            />
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setTplNameModal(false)} style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid #2d2d45', background: 'transparent', color: '#6b6b90', cursor: 'pointer', fontSize: 13 }}>
+                Скасувати
+              </button>
+              <button onClick={() => { setTplNameModal(false); doSaveAsTemplate(tplNameValue); }}
+                style={{ padding: '8px 18px', borderRadius: 8, border: 'none', background: '#6c63ff', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+                Зберегти
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmModal && (
+        <ConfirmModal
+          title={confirmModal.title}
+          message={confirmModal.message}
+          confirmLabel={confirmModal.confirmLabel}
+          danger={confirmModal.danger}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => setConfirmModal(null)}
         />
       )}
 
