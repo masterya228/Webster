@@ -7,7 +7,6 @@ export function resolveUploadUrl(path: string): string {
 
 export function resolveCanvasJsonUrls(json: object): object {
   if (!backendBase) return json;
-  // Only rewrite bare /uploads/ paths (not already-absolute URLs)
   const str = JSON.stringify(json).replace(/"(\/uploads\/[^"]+)"/g, `"${backendBase}$1"`);
   return JSON.parse(str);
 }

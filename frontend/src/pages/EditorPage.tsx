@@ -1059,7 +1059,6 @@ export default function EditorPage() {
       });
       await loadUserTemplates();
     } catch {
-      /* silent */
     } finally {
       setSavingTemplate(false);
     }
@@ -1075,7 +1074,7 @@ export default function EditorPage() {
         try {
           await api.delete(`/templates/${id}`);
           setUserTemplates(prev => prev.filter(t => t.id !== id));
-        } catch { /* silent */ }
+        } catch {}
       },
     });
   };

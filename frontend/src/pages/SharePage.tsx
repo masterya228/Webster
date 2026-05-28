@@ -84,7 +84,6 @@ export default function SharePage() {
     });
   }, [design]);
 
-  // Ctrl+scroll zoom on the canvas wrapper
   useEffect(() => {
     const el = canvasWrapRef.current;
     if (!el) return;
@@ -144,7 +143,6 @@ export default function SharePage() {
           <div style={{ overflow: 'auto', maxWidth: '100%', maxHeight: '65vh', borderRadius: 4, boxShadow: '0 8px 48px rgba(0,0,0,.18)' }}>
             <canvas ref={canvasRef} style={{ display: 'block' }} />
           </div>
-          {/* Zoom controls */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 24, padding: '4px 12px' }}>
             <button onClick={() => changeZoom(-0.2)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--text)', lineHeight: 1, padding: '2px 4px' }} title="Зменшити">−</button>
             <span style={{ fontSize: 12, color: 'var(--text-muted)', minWidth: 44, textAlign: 'center' }}>{Math.round(viewZoom * 100)}%</span>

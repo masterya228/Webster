@@ -103,7 +103,7 @@ export default function ProfilePage() {
     }
   };
 
-  const hasPassword = user?.hasPassword ?? true; // assume true for safety
+  const hasPassword = user?.hasPassword ?? true;
 
   const handleChangePassword = async () => {
     setPwError('');

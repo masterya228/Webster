@@ -13,7 +13,6 @@ const enc = (svg: string) =>
   `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`;
 
 export const TEMPLATES: Template[] = [
-  // ── Базові ────────────────────────────────────────────────────
   {
     id: 'blank',
     label: 'Чистий аркуш',
@@ -85,7 +84,6 @@ export const TEMPLATES: Template[] = [
     </svg>`),
   },
 
-  // ── Публікації ────────────────────────────────────────────────
   {
     id: 'social',
     label: 'Соц. мережа',
@@ -194,7 +192,6 @@ export const TEMPLATES: Template[] = [
     </svg>`),
   },
 
-  // ── Банери ────────────────────────────────────────────────────
   {
     id: 'banner',
     label: 'Широкий банер',
@@ -268,7 +265,6 @@ export const TEMPLATES: Template[] = [
     </svg>`),
   },
 
-  // ── Бізнес ────────────────────────────────────────────────────
   {
     id: 'bizcard',
     label: 'Візитка',
@@ -357,7 +353,6 @@ export const TEMPLATES: Template[] = [
     </svg>`),
   },
 
-  // ── Документи ─────────────────────────────────────────────────
   {
     id: 'certificate',
     label: 'Сертифікат',
@@ -460,7 +455,6 @@ export const TEMPLATES: Template[] = [
     </svg>`),
   },
 
-  // ── Нові шаблони ──────────────────────────────────────────────
   {
     id: 'sale-badge',
     label: 'Sale / Акція',
@@ -645,7 +639,6 @@ export default function TemplatesPanel({ onApply, onClose, userTemplates = [], o
 
       <div style={{ overflowY: 'auto', flex: 1, padding: '8px 10px 16px' }}>
 
-        {/* Мої шаблони */}
         <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0 6px' }}>
             <div style={{ fontSize: 10, fontWeight: 600, color: '#555', textTransform: 'uppercase', letterSpacing: '.06em' }}>
@@ -718,7 +711,6 @@ export default function TemplatesPanel({ onApply, onClose, userTemplates = [], o
           )}
         </div>
 
-        {/* Вбудовані шаблони по категоріях */}
         {categories.map(cat => (
           <div key={cat}>
             <div style={{ fontSize: 10, fontWeight: 600, color: '#555', textTransform: 'uppercase', letterSpacing: '.06em', padding: '10px 0 6px' }}>

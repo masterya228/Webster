@@ -205,7 +205,6 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* stat cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16, marginBottom: 28 }}>
           {[
             { label: 'Користувачів', count: users.length, color: '#6c63ff', icon: '👥' },
@@ -222,7 +221,6 @@ export default function AdminPage() {
           ))}
         </div>
 
-        {/* tabs + search */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <div style={{ display: 'flex', gap: 4, background: 'var(--surface)', borderRadius: 10, padding: 4, border: '1px solid var(--border)' }}>
             {tabBtn('users',     'Користувачі', users.length)}
@@ -237,7 +235,6 @@ export default function AdminPage() {
           />
         </div>
 
-        {/* content */}
         {loading ? (
           <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>
             <span className="spinner" style={{ width: 36, height: 36, borderWidth: 3 }} />
@@ -246,7 +243,6 @@ export default function AdminPage() {
           <div className="card" style={{ overflow: 'hidden' }}>
             <div style={{ overflowX: 'auto' }}>
 
-              {/* ── Users table ── */}
               {tab === 'users' && (
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
@@ -307,7 +303,6 @@ export default function AdminPage() {
                 </table>
               )}
 
-              {/* ── Designs table ── */}
               {tab === 'designs' && (
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
@@ -356,7 +351,6 @@ export default function AdminPage() {
                 </table>
               )}
 
-              {/* ── Templates table ── */}
               {tab === 'templates' && (
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>

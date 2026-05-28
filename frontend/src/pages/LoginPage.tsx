@@ -14,7 +14,6 @@ export default function LoginPage() {
   const { login, loading } = useAuthStore();
   const navigate = useNavigate();
 
-  // forgot-password state
   const [showForgot, setShowForgot] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotStatus, setForgotStatus] = useState<'idle' | 'loading' | 'sent' | 'error'>('idle');
@@ -71,7 +70,6 @@ export default function LoginPage() {
           <Logo size={32} textSize={22} />
         </Link>
 
-        {/* ── Forgot password panel ── */}
         {showForgot ? (
           <>
             <h1 style={{ fontSize: 24, marginBottom: 6 }}>Скидання пароля</h1>

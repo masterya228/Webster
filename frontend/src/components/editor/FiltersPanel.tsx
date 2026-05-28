@@ -44,7 +44,6 @@ export default function FiltersPanel({ onApply, onClear, onClose, hasSelection }
       width: 218, background: BG, borderRight: `1px solid ${BORDER}`,
       display: 'flex', flexDirection: 'column', flexShrink: 0, zIndex: 10,
     }}>
-      {/* Header */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '10px 12px 6px', borderBottom: `1px solid ${BORDER}`,
@@ -53,7 +52,6 @@ export default function FiltersPanel({ onApply, onClear, onClose, hasSelection }
         <button onClick={onClose} style={{ background: 'none', border: 'none', color: MUTED, cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px' }}>×</button>
       </div>
 
-      {/* Context hint */}
       <div style={{ padding: '8px 11px 6px', borderBottom: `1px solid ${BORDER}` }}>
         <div style={{
           fontSize: 10, color: hasSelection ? '#7dd3fc' : MUTED, lineHeight: 1.5,
@@ -64,7 +62,6 @@ export default function FiltersPanel({ onApply, onClear, onClose, hasSelection }
         </div>
       </div>
 
-      {/* Filter grid */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '8px 10px 10px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
           {FILTERS.map(f => (
@@ -94,7 +91,6 @@ export default function FiltersPanel({ onApply, onClear, onClose, hasSelection }
         </div>
       </div>
 
-      {/* Clear button */}
       <div style={{ padding: '8px 10px 10px', borderTop: `1px solid ${BORDER}` }}>
         <button
           onClick={onClear}

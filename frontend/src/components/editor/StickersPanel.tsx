@@ -118,7 +118,6 @@ interface Props {
 const BG     = '#16162a';
 const BORDER = '#2d2d45';
 
-// -1 = "Всі" tab
 export default function StickersPanel({ onAddSticker, onClose }: Props) {
   const [activeCat, setActiveCat] = useState(-1);
   const [search, setSearch] = useState('');

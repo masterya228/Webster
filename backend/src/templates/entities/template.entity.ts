@@ -31,7 +31,6 @@ export class Template {
   @Column({ default: 600 })
   height: number;
 
-  // null = system template; set = user-created template
   @Column({ nullable: true })
   userId: string;
 

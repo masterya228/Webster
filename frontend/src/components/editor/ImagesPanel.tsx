@@ -12,7 +12,6 @@ const MUTED   = '#6b6b90';
 const INPUT   = '#1e1e30';
 const PRIMARY = '#6c63ff';
 
-// Curated free stock images from Unsplash (static, no API key needed)
 const STOCK = [
   { id: 'n1', label: 'Природа',    url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=70' },
   { id: 'n2', label: 'Місто',      url: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=400&q=70' },

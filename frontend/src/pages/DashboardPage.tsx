@@ -171,25 +171,19 @@ export default function DashboardPage() {
       backgroundSize: '26px 26px',
       position: 'relative',
     }}>
-      {/* Fixed ambient blobs — sit behind all content */}
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
-        {/* Top-right large circle */}
         <svg style={{ position: 'absolute', top: -140, right: -140 }} width="520" height="520" viewBox="0 0 520 520" fill="none">
           <circle cx="260" cy="260" r="260" fill="rgba(108,99,255,0.07)"/>
         </svg>
-        {/* Bottom-left circle */}
         <svg style={{ position: 'absolute', bottom: -120, left: -120 }} width="440" height="440" viewBox="0 0 440 440" fill="none">
           <circle cx="220" cy="220" r="220" fill="rgba(168,85,247,0.06)"/>
         </svg>
-        {/* Center-right triangle */}
         <svg style={{ position: 'absolute', top: '38%', right: -40 }} width="280" height="280" viewBox="0 0 280 280" fill="none">
           <polygon points="140,8 272,272 8,272" fill="rgba(108,99,255,0.04)"/>
         </svg>
-        {/* Top-left small diamond */}
         <svg style={{ position: 'absolute', top: '15%', left: '5%' }} width="140" height="140" viewBox="0 0 140 140" fill="none">
           <polygon points="70,4 136,70 70,136 4,70" fill="rgba(108,99,255,0.05)" transform="rotate(10 70 70)"/>
         </svg>
-        {/* Bottom-center rect */}
         <svg style={{ position: 'absolute', bottom: '8%', left: '40%' }} width="160" height="160" viewBox="0 0 160 160" fill="none">
           <rect x="10" y="10" width="140" height="140" rx="18" fill="rgba(168,85,247,0.04)" transform="rotate(22 80 80)"/>
         </svg>
@@ -198,7 +192,6 @@ export default function DashboardPage() {
       <div className="container" style={{ padding: '32px 24px', flex: 1, position: 'relative', zIndex: 1 }}>
 
         <div style={{ position: 'relative', background: 'linear-gradient(120deg, #1a1a2e 0%, #2d2d6e 60%, #6c63ff 100%)', borderRadius: 16, padding: '32px 36px', marginBottom: 36, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          {/* Decorative geometric shapes */}
           <svg style={{ position: 'absolute', right: -40, top: -40, opacity: 0.12 }} width="220" height="220" viewBox="0 0 220 220"><circle cx="110" cy="110" r="110" fill="#fff"/></svg>
           <svg style={{ position: 'absolute', left: '40%', bottom: -30, opacity: 0.08 }} width="140" height="140" viewBox="0 0 140 140"><polygon points="70,5 135,135 5,135" fill="#a855f7"/></svg>
           <svg style={{ position: 'absolute', left: 18, top: -8, opacity: 0.09 }} width="90" height="90" viewBox="0 0 90 90" fill="none">
@@ -234,7 +227,6 @@ export default function DashboardPage() {
           </div>
         ) : activeTab === 'designs' ? (
           <div className="grid-4">
-            {/* Always-visible "New Project" card */}
             <div className="card" style={{ overflow: 'hidden', cursor: 'pointer', transition: 'var(--transition)', border: '2px dashed var(--border)' }}
               onClick={() => setShowNewModal(true)}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-3px)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--primary)'; }}
