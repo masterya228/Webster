@@ -36,7 +36,7 @@ const SWATCH = 'linear-gradient(135deg, #f59e0b 0%, #6c63ff 50%, #10b981 100%)';
 
 export default function FiltersPanel({ onApply, onClear, onClose, hasSelection }: Props) {
   const hint = hasSelection
-    ? 'Фільтр застосується до виділених об'єктів'
+    ? "Фільтр застосується до виділених об'єктів"
     : 'Нічого не виділено — фільтр накладеться на все полотно';
 
   return (
