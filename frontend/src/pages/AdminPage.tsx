@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import DefaultAvatar from '../components/DefaultAvatar';
+import ConfirmModal from '../components/editor/ConfirmModal';
 import { useAuthStore } from '../store/authStore';
 import api from '../api/client';
 
@@ -104,6 +105,9 @@ export default function AdminPage() {
   const [loading,  setLoading]  = useState(false);
   const [editUser, setEditUser] = useState<AdminUser | null>(null);
   const [search,   setSearch]   = useState('');
+  const [confirmModal, setConfirmModal] = useState<{
+    title: string; message: string; confirmLabel?: string; danger?: boolean; onConfirm: () => void;
+  } | null>(null);
 
   const loadAll = async () => {
     setLoading(true);
@@ -124,12 +128,19 @@ export default function AdminPage() {
     loadAll();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleDeleteUser = async (id: string, name: string) => {
-    if (!confirm(`Видалити акаунт "${name}"? Всі дизайни та шаблони теж видаляться.`)) return;
-    await api.delete(`/admin/users/${id}`);
-    setUsers(prev => prev.filter(u => u.id !== id));
-    setDesigns(prev => prev.filter(d => d.userId !== id));
-    setTemplates(prev => prev.filter(t => t.userId !== id));
+  const handleDeleteUser = (id: string, name: string) => {
+    setConfirmModal({
+      title: 'Видалити акаунт?',
+      message: `Акаунт "${name}" буде видалено разом з усіма його дизайнами та шаблонами. Цю дію неможливо скасувати.`,
+      confirmLabel: 'Видалити', danger: true,
+      onConfirm: async () => {
+        setConfirmModal(null);
+        await api.delete(`/admin/users/${id}`);
+        setUsers(prev => prev.filter(u => u.id !== id));
+        setDesigns(prev => prev.filter(d => d.userId !== id));
+        setTemplates(prev => prev.filter(t => t.userId !== id));
+      },
+    });
   };
 
   const handleSaveUser = async (id: string, data: any) => {
@@ -137,16 +148,30 @@ export default function AdminPage() {
     setUsers(prev => prev.map(u => u.id === id ? { ...u, ...updated } : u));
   };
 
-  const handleDeleteDesign = async (id: string, title: string) => {
-    if (!confirm(`Видалити дизайн "${title}"?`)) return;
-    await api.delete(`/admin/designs/${id}`);
-    setDesigns(prev => prev.filter(d => d.id !== id));
+  const handleDeleteDesign = (id: string, title: string) => {
+    setConfirmModal({
+      title: 'Видалити дизайн?',
+      message: `Дизайн "${title}" буде видалено. Цю дію неможливо скасувати.`,
+      confirmLabel: 'Видалити', danger: true,
+      onConfirm: async () => {
+        setConfirmModal(null);
+        await api.delete(`/admin/designs/${id}`);
+        setDesigns(prev => prev.filter(d => d.id !== id));
+      },
+    });
   };
 
-  const handleDeleteTemplate = async (id: string, name: string) => {
-    if (!confirm(`Видалити шаблон "${name}"?`)) return;
-    await api.delete(`/admin/templates/${id}`);
-    setTemplates(prev => prev.filter(t => t.id !== id));
+  const handleDeleteTemplate = (id: string, name: string) => {
+    setConfirmModal({
+      title: 'Видалити шаблон?',
+      message: `Шаблон "${name}" буде видалено. Цю дію неможливо скасувати.`,
+      confirmLabel: 'Видалити', danger: true,
+      onConfirm: async () => {
+        setConfirmModal(null);
+        await api.delete(`/admin/templates/${id}`);
+        setTemplates(prev => prev.filter(t => t.id !== id));
+      },
+    });
   };
 
   const fmt = (d: string) => new Date(d).toLocaleDateString('uk-UA', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -401,6 +426,17 @@ export default function AdminPage() {
 
       {editUser && (
         <EditUserModal user={editUser} onSave={handleSaveUser} onClose={() => setEditUser(null)} />
+      )}
+
+      {confirmModal && (
+        <ConfirmModal
+          title={confirmModal.title}
+          message={confirmModal.message}
+          confirmLabel={confirmModal.confirmLabel}
+          danger={confirmModal.danger}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => setConfirmModal(null)}
+        />
       )}
     </div>
   );

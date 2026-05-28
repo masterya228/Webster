@@ -8,10 +8,10 @@ interface Props {
   onCancel: () => void;
 }
 
-const BG      = '#16162a';
-const BORDER  = '#2d2d45';
-const TEXT    = '#d0d0e8';
-const MUTED   = '#6b6b90';
+const BG      = '#24243e';
+const BORDER  = '#38385a';
+const TEXT    = '#e0e0f4';
+const MUTED   = '#8888aa';
 const PRIMARY = '#6c63ff';
 const DANGER  = '#ef4444';
 
