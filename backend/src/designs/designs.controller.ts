@@ -13,19 +13,15 @@ import { UpdateDesignDto } from './dto/update-design.dto';
 export class DesignsController {
   constructor(private readonly designsService: DesignsService) {}
 
-  /** Public: returns a single design if isPublic=true — no JWT required */
   @Get('share/:id')
   findShared(@Param('id') id: string) {
     return this.designsService.findPublicById(id);
   }
 
-  /** Public: list all public designs */
   @Get('public')
   findPublic() {
     return this.designsService.findPublic();
   }
-
-  // ── Protected routes below ──────────────────────────────────
 
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

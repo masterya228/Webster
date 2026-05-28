@@ -13,7 +13,6 @@ export class AdminService {
     @InjectRepository(Template) private templatesRepo: Repository<Template>,
   ) {}
 
-  // ── Users ─────────────────────────────────────────────────
   findAllUsers(): Promise<User[]> {
     return this.usersRepo.find({ order: { createdAt: 'DESC' } });
   }
@@ -31,7 +30,6 @@ export class AdminService {
     await this.usersRepo.delete(id);
   }
 
-  // ── Designs ───────────────────────────────────────────────
   findAllDesigns(): Promise<Design[]> {
     return this.designsRepo.find({
       order: { updatedAt: 'DESC' },
@@ -48,7 +46,6 @@ export class AdminService {
     await this.designsRepo.delete(id);
   }
 
-  // ── Templates ─────────────────────────────────────────────
   findAllTemplates(): Promise<Template[]> {
     return this.templatesRepo.find({
       order: { createdAt: 'DESC' },

@@ -63,7 +63,6 @@ export class DesignsService {
     });
   }
 
-  /** Returns a single public design without ownership check (for share pages) */
   async findPublicById(id: string): Promise<Design> {
     const design = await this.designsRepository.findOne({ where: { id, isPublic: true } });
     if (!design) throw new NotFoundException('Design not found or not public');

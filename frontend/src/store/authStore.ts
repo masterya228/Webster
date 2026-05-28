@@ -30,7 +30,6 @@ export const useAuthStore = create<AuthState>((set) => ({
       localStorage.setItem('user', JSON.stringify(data));
       set({ user: data });
     } catch {
-      // token expired or invalid — leave current state, login page will handle 401
     }
   },
 

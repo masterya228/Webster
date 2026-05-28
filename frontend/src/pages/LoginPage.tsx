@@ -109,7 +109,7 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
             <label className="label">Email</label>
-            <input className="input" type="email" value={email} onChange={(e) => { setEmail(e.target.value); setUnverifiedEmail(''); setError(''); }} placeholder="john@example.com" required />
+            <input className="input" type="email" autoComplete="email" value={email} onChange={(e) => { setEmail(e.target.value); setUnverifiedEmail(''); setError(''); }} placeholder="john@example.com" required />
           </div>
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
@@ -119,7 +119,7 @@ export default function LoginPage() {
                 Забули пароль?
               </button>
             </div>
-            <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Ваш пароль" required />
+            <input className="input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Ваш пароль" required />
           </div>
 
           {error && <p className="error-text">{error}</p>}

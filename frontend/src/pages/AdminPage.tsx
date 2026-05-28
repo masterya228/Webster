@@ -24,7 +24,6 @@ interface AdminTemplate {
   user?: { id: string; name: string; email: string };
 }
 
-/* ── inline edit modal ─────────────────────────────────────── */
 function EditUserModal({
   user, onSave, onClose,
 }: { user: AdminUser; onSave: (id: string, data: any) => Promise<void>; onClose: () => void }) {
@@ -62,7 +61,6 @@ function EditUserModal({
       <div className="card" style={{ width: 400, padding: 28 }} onClick={e => e.stopPropagation()}>
         <h3 style={{ marginBottom: 20, fontSize: 17, fontWeight: 700 }}>Редагувати користувача</h3>
 
-        {/* avatar row */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
           {localAvatar
             ? <img src={localAvatar} alt="" style={{ width: 52, height: 52, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--border)' }} />
@@ -94,7 +92,6 @@ function EditUserModal({
   );
 }
 
-/* ── main page ─────────────────────────────────────────────── */
 export default function AdminPage() {
   const { user: me } = useAuthStore();
   const navigate = useNavigate();
@@ -187,7 +184,6 @@ export default function AdminPage() {
     </button>
   );
 
-  /* filtered lists */
   const q = search.toLowerCase();
   const filteredUsers     = users.filter(u => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
   const filteredDesigns   = designs.filter(d => d.title.toLowerCase().includes(q) || d.user?.name?.toLowerCase().includes(q) || false);
@@ -201,7 +197,6 @@ export default function AdminPage() {
       <Navbar />
       <div className="container" style={{ padding: '32px 24px', flex: 1 }}>
 
-        {/* header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 28 }}>
           <div style={{ width: 42, height: 42, borderRadius: 10, background: 'linear-gradient(135deg,#f59e0b,#ef4444)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>⚙</div>
           <div>

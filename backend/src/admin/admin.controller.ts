@@ -14,7 +14,6 @@ import { AdminService } from './admin.service';
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
-  // ── Users ──────────────────────────────────────────────────
   @Get('users')
   getUsers() { return this.adminService.findAllUsers(); }
 
@@ -24,7 +23,6 @@ export class AdminController {
     @Body() body: { name?: string; email?: string; role?: 'user' | 'admin' },
     @Request() req,
   ) {
-    // prevent self-demotion
     if (id === req.user.id && body.role && body.role !== 'admin') {
       body.role = 'admin';
     }
@@ -37,7 +35,6 @@ export class AdminController {
     return this.adminService.deleteUser(id).then(() => ({ success: true }));
   }
 
-  // ── Designs ────────────────────────────────────────────────
   @Get('designs')
   getDesigns() { return this.adminService.findAllDesigns(); }
 
@@ -46,7 +43,6 @@ export class AdminController {
     return this.adminService.deleteDesign(id).then(() => ({ success: true }));
   }
 
-  // ── Templates ──────────────────────────────────────────────
   @Get('templates')
   getTemplates() { return this.adminService.findAllTemplates(); }
 

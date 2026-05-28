@@ -22,7 +22,6 @@ export class AuthService {
   async register(dto: RegisterDto) {
     const user = await this.usersService.create(dto.email, dto.name, dto.password);
 
-    // Send verification email (fire-and-forget — does not block registration)
     this.emailService
       .sendVerificationEmail(user.email, user.name, user.verificationToken)
       .catch((err) => console.error('[Auth] Email send error:', err?.message));
@@ -61,7 +60,6 @@ export class AuthService {
     await this.usersService.verifyUser(user);
     await this.emailService.sendPasswordChangedEmail(user.email, user.name).catch(() => {});
 
-    // Sign in immediately after verification
     const jwtToken = this.jwtService.sign({ sub: user.id, email: user.email });
     return {
       token: jwtToken,
@@ -85,7 +83,6 @@ export class AuthService {
 
   async forgotPassword(email: string) {
     const result = await this.usersService.createPasswordResetToken(email);
-    // Always return success to prevent email enumeration
     if (result) {
       await this.emailService
         .sendPasswordResetEmail(result.user.email, result.user.name, result.token)

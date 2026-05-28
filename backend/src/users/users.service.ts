@@ -112,9 +112,9 @@ export class UsersService {
 
   async createPasswordResetToken(email: string): Promise<{ user: User; token: string } | null> {
     const user = await this.usersRepository.findOne({ where: { email } });
-    if (!user) return null; // silently ignore unknown accounts
+    if (!user) return null;
     const token = this.generateToken();
-    const expiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    const expiry = new Date(Date.now() + 60 * 60 * 1000);
     user.resetPasswordToken = token;
     user.resetPasswordExpiry = expiry;
     await this.usersRepository.save(user);
@@ -132,8 +132,6 @@ export class UsersService {
   }
 
   async deleteAccount(id: string): Promise<void> {
-    // Explicitly remove dependent rows first to avoid FK constraint issues
-    // regardless of whether the DB has ON DELETE CASCADE configured
     await this.templatesRepository.delete({ userId: id });
     await this.designsRepository.delete({ userId: id });
     await this.usersRepository.delete(id);
@@ -152,7 +150,6 @@ export class UsersService {
 
     if (dto.newPassword) {
       if (!user.password) {
-        // Google-only account — allow setting a password for the first time
         user.password = await bcrypt.hash(dto.newPassword, 10);
       } else {
         if (!dto.currentPassword) throw new BadRequestException('Current password required');

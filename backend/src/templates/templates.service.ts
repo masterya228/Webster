@@ -31,7 +31,6 @@ export class TemplatesService implements OnModuleInit {
     }
   }
 
-  /** System templates (userId IS NULL) only — user templates fetched separately */
   async findAll(userId?: string): Promise<Template[]> {
     return this.templatesRepository.find({
       where: { userId: IsNull() },
@@ -43,12 +42,10 @@ export class TemplatesService implements OnModuleInit {
     return this.templatesRepository.find({ where: { category, userId: IsNull() } });
   }
 
-  /** Only user's own templates */
   async findUserTemplates(userId: string): Promise<Template[]> {
     return this.templatesRepository.find({ where: { userId }, order: { createdAt: 'DESC' } });
   }
 
-  /** Templates created by OTHER users (community) */
   async findOtherUsersTemplates(userId: string): Promise<Template[]> {
     return this.templatesRepository.find({
       where: { userId: Not(IsNull()) },

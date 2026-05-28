@@ -64,15 +64,15 @@ export default function RegisterPage() {
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
             <label className="label">Повне ім'я</label>
-            <input className="input" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="John Doe" required />
+            <input className="input" type="text" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="John Doe" required />
           </div>
           <div>
             <label className="label">Email</label>
-            <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="john@example.com" required />
+            <input className="input" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="john@example.com" required />
           </div>
           <div>
             <label className="label">Пароль</label>
-            <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Щонайменше 6 символів" required />
+            <input className="input" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Щонайменше 6 символів" required />
           </div>
           {error && <p className="error-text">{error}</p>}
           <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: '100%', justifyContent: 'center', padding: '12px' }}>

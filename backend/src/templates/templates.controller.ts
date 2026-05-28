@@ -22,7 +22,6 @@ export class TemplatesController {
     return this.templatesService.findUserTemplates(req.user.id);
   }
 
-  /** Community templates — all user-created templates from other users */
   @Get('others')
   findOthers(@Request() req) {
     return this.templatesService.findOtherUsersTemplates(req.user.id);

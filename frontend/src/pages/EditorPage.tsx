@@ -49,7 +49,6 @@ function buildShape(
   const sw     = fillMode === 'filled'  ? 0             : strokeWidth;
   const common = { fill, stroke, strokeWidth: sw, opacity, selectable: false, evented: false, objectCaching: false };
 
-  // Line tools use absolute coords and always have visible stroke
   const lineStroke = strokeColor;
   const lineSw = Math.max(1, strokeWidth);
 
@@ -82,18 +81,14 @@ function buildShape(
   }
 }
 
-/** Patch/un-patch the render method of any fabric object to apply a CSS filter.
- *  Pure render concern — _cssFilter / _cssFilters state is managed by callers. */
 function patchObjectFilter(obj: fabric.Object, cssFilter: string) {
   const o = obj as any;
-  // Remove any existing instance-level patch so we never stack render wrappers
   if (o._filterPatched) {
-    delete o.render;           // instance override gone → prototype chain restored
+    delete o.render;
     o._filterPatched = false;
   }
   obj.set('objectCaching', false);
   if (!cssFilter) return;
-  // Capture the prototype render bound to this instance
   const origRender = (o.render as Function).bind(obj);
   o._filterPatched = true;
   (obj as any).render = function(ctx: CanvasRenderingContext2D) {
@@ -104,7 +99,6 @@ function patchObjectFilter(obj: fabric.Object, cssFilter: string) {
   };
 }
 
-/** Re-apply _cssFilter patches after loadFromJSON (deserialization loses instance methods) */
 function reapplyObjectFilters(c: fabric.Canvas) {
   c.getObjects().forEach(obj => {
     const f = (obj as any)._cssFilter;
@@ -112,22 +106,19 @@ function reapplyObjectFilters(c: fabric.Canvas) {
   });
 }
 
-/** Parse the JSON-encoded filter list stored on an object */
 function getObjectFilterList(obj: fabric.Object): string[] {
   try { return JSON.parse((obj as any)._cssFilters || '[]'); } catch { return []; }
 }
 
-/** Add one CSS filter to the object's stack (multiple filters accumulate) */
 function addObjectFilter(obj: fabric.Object, cssFilter: string) {
   const o = obj as any;
   const list = getObjectFilterList(obj);
   list.push(cssFilter);
   o._cssFilters = JSON.stringify(list);
-  o._cssFilter  = list.join(' ');   // combined string, used by reapplyObjectFilters
+  o._cssFilter  = list.join(' ');
   patchObjectFilter(obj, o._cssFilter);
 }
 
-/** Remove every CSS filter from an object */
 function clearObjectFilters(obj: fabric.Object) {
   const o = obj as any;
   o._cssFilters = '[]';
@@ -184,17 +175,14 @@ export default function EditorPage() {
   const [isPublic,       setIsPublic]       = useState(false);
   const [userTemplates,  setUserTemplates]  = useState<any[]>([]);
 
-  // Confirm modal state
   const [confirmModal, setConfirmModal] = useState<{
     title: string; message: string; confirmLabel?: string; danger?: boolean; onConfirm: () => void;
   } | null>(null);
   const showConfirm = (opts: typeof confirmModal) => setConfirmModal(opts);
 
-  // Template name prompt modal
   const [tplNameModal, setTplNameModal] = useState(false);
   const [tplNameValue, setTplNameValue] = useState('');
 
-  // Export dropdown
   const [showExportMenu, setShowExportMenu] = useState(false);
 
   const [activeTool,  setActiveTool]  = useState('select');
@@ -300,7 +288,6 @@ export default function EditorPage() {
     const oldZ = zoomRef.current;
     const clampedZ = Math.max(0.1, Math.min(5, newZ));
 
-    // 1. Read cursor position relative to canvas BEFORE zoom
     let logicalX = -1, logicalY = -1;
     if (cursorClient) {
       const cr = (c.getElement() as HTMLCanvasElement).getBoundingClientRect();
@@ -312,7 +299,6 @@ export default function EditorPage() {
       }
     }
 
-    // 2. Apply zoom — changes the canvas DOM element's CSS size synchronously
     c.setZoom(clampedZ);
     c.setViewportTransform([clampedZ, 0, 0, clampedZ, 0, 0]);
     c.setDimensions({ width: w * clampedZ, height: h * clampedZ });
@@ -320,15 +306,10 @@ export default function EditorPage() {
     zoomRef.current = clampedZ;
     setZoom(clampedZ);
 
-    // 3. getBoundingClientRect() forces a synchronous reflow — the browser re-runs
-    //    the flex centering layout, so crAfter reflects the canvas's TRUE new position.
-    //    No requestAnimationFrame needed.
     if (logicalX >= 0 && cursorClient && wrapper) {
       const crAfter = (c.getElement() as HTMLCanvasElement).getBoundingClientRect();
-      // Logical point is now at this screen X/Y:
       const pointX = crAfter.left + logicalX * clampedZ;
       const pointY = crAfter.top  + logicalY * clampedZ;
-      // Scroll to keep it exactly under the cursor
       wrapper.scrollLeft = Math.max(0, wrapper.scrollLeft + (pointX - cursorClient.x));
       wrapper.scrollTop  = Math.max(0, wrapper.scrollTop  + (pointY - cursorClient.y));
     }
@@ -340,7 +321,6 @@ export default function EditorPage() {
     const onWheel = (e: WheelEvent) => {
       if (!e.ctrlKey) return;
       e.preventDefault();
-      // Multiplicative zoom — feels more natural and proportional
       const factor = e.deltaY < 0 ? 1.08 : 1 / 1.08;
       const newZ = Math.max(0.1, Math.min(5, zoomRef.current * factor));
       applyZoom(newZ, { x: e.clientX, y: e.clientY });
@@ -518,7 +498,6 @@ export default function EditorPage() {
       }
       if (e.key === 'Escape') setActiveTool('select');
 
-      // Move selected object(s) with arrow keys or WASD
       const isArrow = e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown';
       const isWASD  = k === 'w' || k === 'a' || k === 's' || k === 'd';
       const isEditingFabric = canvas.getObjects().some(o => (o as any).isEditing);
@@ -600,8 +579,6 @@ export default function EditorPage() {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Capture-phase Ctrl+S — runs BEFORE the browser "Save webpage" dialog.
-  // saveDesignRef is always current so there's no stale-closure issue.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
@@ -617,7 +594,6 @@ export default function EditorPage() {
   useEffect(() => {
     const canvas = fabricRef.current;
     if (!canvas) return;
-    // Eyedropper only needs setup once when switching to it — not on every color change
     if (activeTool === 'eyedropper') return;
     const isBrush = activeTool === 'pencil';
     const isShape = SHAPE_TOOLS.includes(activeTool);
@@ -693,7 +669,7 @@ export default function EditorPage() {
   const toolToTypeKey = (tool: string): string => {
     if (tool === 'draw-circle') return 'ellipse';
     if (tool === 'pencil') return 'path';
-    return 'rect'; // draw-rect, draw-rounded-rect, draw-diamond, draw-trapezoid, draw-right-triangle
+    return 'rect';
   };
 
   const saveObjProps = (obj: fabric.Object) => {
@@ -723,7 +699,6 @@ export default function EditorPage() {
   };
 
   const selectTool = (tool: string) => {
-    // Don't inherit saved tool colors when switching FROM eyedropper — preserve the picked color
     if (activeTool !== 'eyedropper') {
       if (SHAPE_TOOLS.includes(tool) || tool === 'pencil') inheritFromLastObject(tool);
     }
@@ -791,12 +766,10 @@ export default function EditorPage() {
     if (!c) return;
     const activeObjs = c.getActiveObjects();
     if (activeObjs.length > 0) {
-      // Stack filter on top of any already-applied filters (multiple filters supported)
       activeObjs.forEach(obj => addObjectFilter(obj, filterDef.preview));
       c.renderAll();
       pushHistory('⬡ Фільтр');
     } else {
-      // Nothing selected — apply filter to the entire canvas
       setCanvasCssFilter(filterDef.preview);
     }
   };
@@ -806,7 +779,6 @@ export default function EditorPage() {
     if (!c) return;
     const activeObjs = c.getActiveObjects();
     if (activeObjs.length > 0) {
-      // Clear ALL accumulated filters from each selected object at once
       activeObjs.forEach(obj => clearObjectFilters(obj));
       c.renderAll();
       pushHistory('× Фільтр');
@@ -925,7 +897,6 @@ export default function EditorPage() {
     c.setBackgroundColor(bg, () => {});
 
     if (tpl.canvasData && !tpl.objects) {
-      // user template — use loadFromJSON
       const jsonData = resolveCanvasJsonUrls(tpl.canvasData);
       const safety = setTimeout(() => {
         suppressRef.current = false;
@@ -944,7 +915,6 @@ export default function EditorPage() {
         refreshObjects();
       });
     } else {
-      // built-in template — create objects synchronously via constructors
       const specs: any[] = tpl.objects ?? [];
       for (const spec of specs) {
         const { type, text, ...props } = spec;
@@ -1027,7 +997,6 @@ export default function EditorPage() {
     }
     return null;
   };
-  // Keep ref current so the capture-phase Ctrl+S handler always calls latest saveDesign
   saveDesignRef.current = saveDesign;
 
   const togglePublic = async (pub: boolean) => {
@@ -1111,7 +1080,6 @@ export default function EditorPage() {
     });
   };
 
-  // Apply canvasCssFilter to a data-url image and return a new filtered data-url
   const applyFilterToDataUrl = (url: string, w: number, h: number, cssFilter: string): Promise<string> =>
     new Promise((resolve) => {
       const img = new Image();
@@ -1174,7 +1142,6 @@ export default function EditorPage() {
       return;
     }
 
-    // PNG / JPEG
     const rawUrl = c.toDataURL({ format, quality: 0.92, multiplier: 1 / z });
     const download = (dataUrl: string) => {
       const a = document.createElement('a');
@@ -1370,8 +1337,7 @@ export default function EditorPage() {
         )}
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          {/* Outer div: scroll container — never centers itself, just clips + scrolls */}
-          <div
+            <div
             ref={canvasWrapRef}
             style={{
               flex: 1, overflow: 'auto',
@@ -1380,10 +1346,6 @@ export default function EditorPage() {
               backgroundSize: '22px 22px',
             }}
           >
-            {/* Inner div: min-width/height 100% ensures outer div is fully scrollable.
-                flex-start keeps the canvas pinned to padding-left so the left edge
-                is always reachable at scrollLeft=0. align-items:center centres
-                vertically when the canvas is shorter than the viewport. */}
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
               minWidth: '100%', minHeight: '100%',
