@@ -82,15 +82,15 @@ function buildShape(
   }
 }
 
-/** Apply a CSS filter to any fabric object via render-override (works on all types) */
+/** Patch/un-patch the render method of any fabric object to apply a CSS filter.
+ *  Pure render concern — _cssFilter / _cssFilters state is managed by callers. */
 function patchObjectFilter(obj: fabric.Object, cssFilter: string) {
   const o = obj as any;
-  // Remove any existing instance-level patch so we never stack wrappers
+  // Remove any existing instance-level patch so we never stack render wrappers
   if (o._filterPatched) {
     delete o.render;           // instance override gone → prototype chain restored
     o._filterPatched = false;
   }
-  o._cssFilter = cssFilter;
   obj.set('objectCaching', false);
   if (!cssFilter) return;
   // Capture the prototype render bound to this instance
@@ -110,6 +110,29 @@ function reapplyObjectFilters(c: fabric.Canvas) {
     const f = (obj as any)._cssFilter;
     if (f) patchObjectFilter(obj, f);
   });
+}
+
+/** Parse the JSON-encoded filter list stored on an object */
+function getObjectFilterList(obj: fabric.Object): string[] {
+  try { return JSON.parse((obj as any)._cssFilters || '[]'); } catch { return []; }
+}
+
+/** Add one CSS filter to the object's stack (multiple filters accumulate) */
+function addObjectFilter(obj: fabric.Object, cssFilter: string) {
+  const o = obj as any;
+  const list = getObjectFilterList(obj);
+  list.push(cssFilter);
+  o._cssFilters = JSON.stringify(list);
+  o._cssFilter  = list.join(' ');   // combined string, used by reapplyObjectFilters
+  patchObjectFilter(obj, o._cssFilter);
+}
+
+/** Remove every CSS filter from an object */
+function clearObjectFilters(obj: fabric.Object) {
+  const o = obj as any;
+  o._cssFilters = '[]';
+  o._cssFilter  = '';
+  patchObjectFilter(obj, '');
 }
 
 const HISTORY_LIMIT = 200;
@@ -214,7 +237,7 @@ export default function EditorPage() {
   const pushHistory = useCallback((label = '✏ Зміна') => {
     const c = fabricRef.current;
     if (!c || suppressRef.current) return;
-    const json = JSON.stringify(c.toJSON(['_label', '_locked', '_isSticker', '_cssFilter']));
+    const json = JSON.stringify(c.toJSON(['_label', '_locked', '_isSticker', '_cssFilter', '_cssFilters']));
     const idx  = historyIndexRef.current;
     const arr  = historyRef.current.slice(0, idx + 1);
     const lbls = historyLabelsRef.current.slice(0, idx + 1);
@@ -768,8 +791,8 @@ export default function EditorPage() {
     if (!c) return;
     const activeObjs = c.getActiveObjects();
     if (activeObjs.length > 0) {
-      // Apply CSS filter via render-override to every selected object
-      activeObjs.forEach(obj => patchObjectFilter(obj, filterDef.preview));
+      // Stack filter on top of any already-applied filters (multiple filters supported)
+      activeObjs.forEach(obj => addObjectFilter(obj, filterDef.preview));
       c.renderAll();
       pushHistory('⬡ Фільтр');
     } else {
@@ -783,7 +806,8 @@ export default function EditorPage() {
     if (!c) return;
     const activeObjs = c.getActiveObjects();
     if (activeObjs.length > 0) {
-      activeObjs.forEach(obj => patchObjectFilter(obj, ''));
+      // Clear ALL accumulated filters from each selected object at once
+      activeObjs.forEach(obj => clearObjectFilters(obj));
       c.renderAll();
       pushHistory('× Фільтр');
     } else {
@@ -973,7 +997,7 @@ export default function EditorPage() {
     const c = fabricRef.current;
     if (!c) return null;
     setSaving(true);
-    const canvasData = c.toJSON(['_label', '_locked', '_isSticker', '_cssFilter']);
+    const canvasData = c.toJSON(['_label', '_locked', '_isSticker', '_cssFilter', '_cssFilters']);
     try {
       let savedId: string;
       if (design) {
@@ -1055,7 +1079,7 @@ export default function EditorPage() {
     if (!c || !name.trim()) return;
     setSavingTemplate(true);
     try {
-      const canvasData = c.toJSON(['_label', '_locked', '_isSticker', '_cssFilter']);
+      const canvasData = c.toJSON(['_label', '_locked', '_isSticker', '_cssFilter', '_cssFilters']);
       const thumbnail  = c.toDataURL({ format: 'jpeg', quality: 0.7, multiplier: 0.3 / zoomRef.current });
       await api.post('/templates', {
         name: name.trim(),
@@ -1462,7 +1486,7 @@ export default function EditorPage() {
         </>}
         <span style={{ flex: 1 }} />
         <span style={{ fontSize: 10.5, color: '#3a3a55' }}>
-          Ctrl+Z/Y — крок назад/вперед · Ctrl+S — зберегти · Del — видалити · Shift+drag — пропорційно
+          Ctrl+Z/Y — крок назад/вперед · Del — видалити · Shift+drag — пропорційно
         </span>
       </div>
     </div>
