@@ -46,7 +46,7 @@ export default function Navbar() {
                 ? <img src={user.avatar} alt={user.name} style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', border: '2px solid #6c63ff' }} />
                 : <DefaultAvatar size={36} />
               }
-              <span style={{ fontSize: 13, color: 'var(--text)', fontWeight: 500 }}>{user.name.split(' ')[0]}</span>
+              <span style={{ fontSize: 13, color: 'var(--text)', fontWeight: 500 }}>{user.name?.split(' ')[0]}</span>
             </Link>
 
             <button className="btn btn-ghost btn-sm" onClick={handleLogout}>Вийти</button>
