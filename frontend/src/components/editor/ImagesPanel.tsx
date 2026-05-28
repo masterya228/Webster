@@ -1,4 +1,3 @@
-import { useRef } from 'react';
 
 interface Props {
   onAddImageUrl: (url: string) => void;
@@ -24,9 +23,9 @@ const STOCK = [
   { id: 'n7', label: 'Гори',       url: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400&q=70' },
   { id: 'n8', label: 'Океан',      url: 'https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=400&q=70' },
   { id: 'n9', label: 'Ліс',        url: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=400&q=70' },
-  { id:'n10', label: 'Квіти',      url: 'https://images.unsplash.com/photo-1490750967868-88df5691cc07?w=400&q=70' },
-  { id:'n11', label: 'Текстура',   url: 'https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=400&q=70' },
-  { id:'n12', label: 'Захід',      url: 'https://images.unsplash.com/photo-1495616811223-4d98c6e9c869?w=400&q=70' },
+  { id:'n10', label: 'Текстура',   url: 'https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=400&q=70' },
+  { id:'n11', label: 'Захід',      url: 'https://images.unsplash.com/photo-1495616811223-4d98c6e9c869?w=400&q=70' },
+  { id:'n12', label: 'Космос',     url: 'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=400&q=70' },
 ];
 
 export default function ImagesPanel({ onAddImageUrl, onUploadFile, onClose }: Props) {

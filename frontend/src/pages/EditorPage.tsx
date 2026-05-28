@@ -11,8 +11,7 @@ import StickersPanel from '../components/editor/StickersPanel';
 import CanvasSizePanel from '../components/editor/CanvasSizePanel';
 import ConfirmModal from '../components/editor/ConfirmModal';
 import ImagesPanel from '../components/editor/ImagesPanel';
-import FiltersPanel from '../components/editor/FiltersPanel';
-type FilterDef = { id: string; label: string; preview: string; fabricFilter: any };
+import FiltersPanel, { FilterDef } from '../components/editor/FiltersPanel';
 import ShareModal from '../components/editor/ShareModal';
 import { Design } from '../types';
 import api from '../api/client';
@@ -21,6 +20,7 @@ import { LogoMark } from '../components/Logo';
 const SHAPE_TOOLS = [
   'draw-rect','draw-circle',
   'draw-rounded-rect','draw-diamond','draw-trapezoid','draw-right-triangle','draw-arrow',
+  'draw-line','draw-bezier',
 ];
 const SHAPE_LABELS: Record<string, string> = {
   'draw-rect':           '▭ Прямокутник',
@@ -30,6 +30,8 @@ const SHAPE_LABELS: Record<string, string> = {
   'draw-trapezoid':      '⏢ Трапеція',
   'draw-right-triangle': '◺ Трикутник',
   'draw-arrow':          '→ Стрілка',
+  'draw-line':           '╱ Лінія',
+  'draw-bezier':         '∿ Крива',
 };
 
 function buildShape(
@@ -37,13 +39,22 @@ function buildShape(
   fillMode: FillMode, fillColor: string, strokeColor: string,
   strokeWidth: number, opacity: number,
 ): fabric.Object | null {
+  const isLineTool = tool === 'draw-line' || tool === 'draw-bezier';
   const w = Math.abs(x2-x1), h = Math.abs(y2-y1);
   const left = Math.min(x1,x2), top = Math.min(y1,y2);
-  if (w < 2 || h < 2) return null;
+  const dist = Math.sqrt((x2-x1)**2 + (y2-y1)**2);
+
+  if (isLineTool ? dist < 4 : (w < 2 || h < 2)) return null;
+
   const fill   = fillMode === 'outline' ? 'transparent' : fillColor;
   const stroke = fillMode === 'filled'  ? 'transparent' : strokeColor;
   const sw     = fillMode === 'filled'  ? 0             : strokeWidth;
   const common = { fill, stroke, strokeWidth: sw, opacity, selectable: false, evented: false, objectCaching: false };
+
+  // Line tools use absolute coords and always have visible stroke
+  const lineStroke = strokeColor;
+  const lineSw = Math.max(1, strokeWidth);
+
   switch (tool) {
     case 'draw-rect':
       return new fabric.Rect({ ...common, left, top, width: w, height: h });
@@ -55,14 +66,32 @@ function buildShape(
     case 'draw-trapezoid': { const p = new fabric.Path(`M ${w*.22} 0 L ${w*.78} 0 L ${w} ${h} L 0 ${h} Z`, common); p.set({ left, top }); return p; }
     case 'draw-right-triangle': { const p = new fabric.Path(`M 0 0 L 0 ${h} L ${w} ${h} Z`, common); p.set({ left, top }); return p; }
     case 'draw-arrow': {
-      const bh = Math.max(1, h * 0.38); // body height
-      const by = (h - bh) / 2;          // body top Y
-      const hw = Math.min(w * 0.36, h); // head width
-      const hx = w - hw;                // head start X
+      const bh = Math.max(1, h * 0.38);
+      const by = (h - bh) / 2;
+      const hw = Math.min(w * 0.36, h);
+      const hx = w - hw;
       const path = `M 0 ${by} L ${hx} ${by} L ${hx} 0 L ${w} ${h/2} L ${hx} ${h} L ${hx} ${by+bh} L 0 ${by+bh} Z`;
       const p = new fabric.Path(path, common);
       p.set({ left, top });
       return p;
+    }
+    case 'draw-line':
+      return new fabric.Line([x1, y1, x2, y2], {
+        stroke: lineStroke, strokeWidth: lineSw, fill: 'transparent', opacity,
+        selectable: false, evented: false, objectCaching: false,
+      });
+    case 'draw-bezier': {
+      // Quadratic bezier: control point is offset perpendicular to the midpoint
+      const mx = (x1+x2)/2, my = (y1+y2)/2;
+      const dx = x2-x1, dy = y2-y1;
+      const offset = Math.min(dist * 0.38, 180);
+      const perpX = dist > 0 ? -dy/dist*offset : 0;
+      const perpY = dist > 0 ?  dx/dist*offset : 0;
+      return new fabric.Path(
+        `M ${x1} ${y1} Q ${mx+perpX} ${my+perpY} ${x2} ${y2}`,
+        { stroke: lineStroke, strokeWidth: lineSw, fill: 'transparent', opacity,
+          selectable: false, evented: false, objectCaching: false },
+      );
     }
     default: return null;
   }
@@ -110,6 +139,7 @@ export default function EditorPage() {
   const [showCanvasSize, setShowCanvasSize] = useState(false);
   const [showImages,     setShowImages]     = useState(false);
   const [showFilters,    setShowFilters]    = useState(false);
+  const [canvasCssFilter, setCanvasCssFilter] = useState('');
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [showShare,      setShowShare]      = useState(false);
   const [isPublic,       setIsPublic]       = useState(false);
@@ -1011,21 +1041,35 @@ export default function EditorPage() {
     });
   };
 
+  // Apply canvasCssFilter to a data-url image and return a new filtered data-url
+  const applyFilterToDataUrl = (url: string, w: number, h: number, cssFilter: string): Promise<string> =>
+    new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const cvs = document.createElement('canvas');
+        cvs.width = w; cvs.height = h;
+        const ctx = cvs.getContext('2d')!;
+        ctx.filter = cssFilter;
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(cvs.toDataURL('image/png'));
+      };
+      img.src = url;
+    });
+
   const exportAs = (format: 'png' | 'jpeg' | 'svg' | 'pdf') => {
     const c = fabricRef.current;
     if (!c) return;
+    const { w, h } = logicalSizeRef.current;
+    const z = zoomRef.current;
+    const cssFilter = canvasCssFilter;
 
     if (format === 'svg') {
-      const { w, h } = logicalSizeRef.current;
-      const z = zoomRef.current;
       c.setZoom(1);
       c.setViewportTransform([1, 0, 0, 1, 0, 0]);
       c.setDimensions({ width: w, height: h });
       const svg = c.toSVG();
-      c.setZoom(z);
-      c.setViewportTransform([z, 0, 0, z, 0, 0]);
-      c.setDimensions({ width: w * z, height: h * z });
-      c.renderAll();
+      c.setZoom(z); c.setViewportTransform([z, 0, 0, z, 0, 0]);
+      c.setDimensions({ width: w * z, height: h * z }); c.renderAll();
       const blob = new Blob([svg], { type: 'image/svg+xml' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -1035,24 +1079,19 @@ export default function EditorPage() {
     }
 
     if (format === 'pdf') {
-      const { w, h } = logicalSizeRef.current;
-      const url = c.toDataURL({ format: 'png', quality: 1, multiplier: 1 / zoomRef.current });
-      const img = new Image();
-      img.onload = () => {
-        const cvs = document.createElement('canvas');
-        cvs.width = w; cvs.height = h;
-        const ctx = cvs.getContext('2d')!;
-        ctx.drawImage(img, 0, 0, w, h);
+      const rawUrl = c.toDataURL({ format: 'png', quality: 1, multiplier: 1 / z });
+      const doExport = (dataUrl: string) => {
         const printFrame = document.createElement('iframe');
         printFrame.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:none;z-index:99999;visibility:hidden';
         document.body.appendChild(printFrame);
         const doc = printFrame.contentDocument!;
+        const filterStyle = cssFilter ? `filter:${cssFilter};` : '';
         doc.open();
         doc.write(`<!DOCTYPE html><html><head><title>${title}</title><style>
           @page{size:${w}px ${h}px;margin:0}
           body{margin:0;padding:0;width:${w}px;height:${h}px;overflow:hidden}
-          img{width:${w}px;height:${h}px;display:block;object-fit:contain}
-        </style></head><body><img src="${url}"/></body></html>`);
+          img{width:${w}px;height:${h}px;display:block;object-fit:contain;${filterStyle}}
+        </style></head><body><img src="${dataUrl}"/></body></html>`);
         doc.close();
         printFrame.contentWindow!.focus();
         setTimeout(() => {
@@ -1061,14 +1100,21 @@ export default function EditorPage() {
           setTimeout(() => document.body.removeChild(printFrame), 1000);
         }, 300);
       };
-      img.src = url;
+      doExport(rawUrl);
       return;
     }
 
-    const url = c.toDataURL({ format, quality: 0.92, multiplier: 1 / zoomRef.current });
-    const a = document.createElement('a');
-    a.href = url; a.download = `${title}.${format === 'jpeg' ? 'jpg' : 'png'}`;
-    a.click();
+    // PNG / JPEG
+    const rawUrl = c.toDataURL({ format, quality: 0.92, multiplier: 1 / z });
+    const download = (dataUrl: string) => {
+      const a = document.createElement('a');
+      a.href = dataUrl; a.download = `${title}.${format === 'jpeg' ? 'jpg' : 'png'}`; a.click();
+    };
+    if (cssFilter) {
+      applyFilterToDataUrl(rawUrl, w, h, cssFilter).then(download);
+    } else {
+      download(rawUrl);
+    }
   };
 
   return (
@@ -1216,6 +1262,9 @@ export default function EditorPage() {
         {showFilters && (
           <FiltersPanel
             onApplyFilter={applyFilterToSelected}
+            onApplyCanvasFilter={(f) => setCanvasCssFilter(f)}
+            onClearCanvasFilter={() => setCanvasCssFilter('')}
+            canvasFilter={canvasCssFilter}
             onClose={() => setShowFilters(false)}
           />
         )}
@@ -1262,18 +1311,19 @@ export default function EditorPage() {
               backgroundSize: '22px 22px',
             }}
           >
-            {/* Inner div: at least viewport size, centers canvas when smaller than viewport.
-                min-width/height:100% + justify/align center = centered when small.
-                When canvas + padding exceeds viewport, inner div grows and outer div scrolls.
-                Symmetric padding ensures both edges are reachable at scrollLeft=0. */}
+            {/* Inner div: min-width/height 100% ensures outer div is fully scrollable.
+                flex-start keeps the canvas pinned to padding-left so the left edge
+                is always reachable at scrollLeft=0. align-items:center centres
+                vertically when the canvas is shorter than the viewport. */}
             <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
               minWidth: '100%', minHeight: '100%',
               padding: 48, boxSizing: 'border-box',
             }}>
               <div style={{
                 boxShadow: '0 16px 64px rgba(0,0,0,.7), 0 0 0 1px rgba(108,99,255,.18)',
                 flexShrink: 0, display: 'inline-block', borderRadius: 2,
+                filter: canvasCssFilter || undefined,
               }}>
                 <canvas ref={canvasRef} />
               </div>

@@ -118,13 +118,17 @@ interface Props {
 const BG     = '#16162a';
 const BORDER = '#2d2d45';
 
+// -1 = "Всі" tab
 export default function StickersPanel({ onAddSticker, onClose }: Props) {
-  const [activeCat, setActiveCat] = useState(0);
+  const [activeCat, setActiveCat] = useState(-1);
   const [search, setSearch] = useState('');
 
+  const allStickers = CATEGORIES.flatMap(c => c.stickers);
   const filtered = search
-    ? CATEGORIES.flatMap(c => c.stickers).filter(s => s.label.toLowerCase().includes(search.toLowerCase()) || s.emoji.includes(search))
-    : CATEGORIES[activeCat].stickers;
+    ? allStickers.filter(s => s.label.toLowerCase().includes(search.toLowerCase()) || s.emoji.includes(search))
+    : activeCat === -1
+      ? allStickers
+      : CATEGORIES[activeCat].stickers;
 
   return (
     <div style={{
@@ -153,6 +157,14 @@ export default function StickersPanel({ onAddSticker, onClose }: Props) {
 
       {!search && (
         <div style={{ display: 'flex', overflowX: 'auto', borderBottom: `1px solid ${BORDER}`, flexShrink: 0, padding: '4px 6px', gap: 4 }}>
+          <button onClick={() => setActiveCat(-1)} style={{
+            padding: '4px 8px', borderRadius: 6, border: 'none', whiteSpace: 'nowrap',
+            background: activeCat === -1 ? 'var(--primary)' : 'transparent',
+            color: activeCat === -1 ? '#fff' : '#888',
+            fontSize: 10, fontWeight: 600, cursor: 'pointer', flexShrink: 0,
+          }}>
+            Всі
+          </button>
           {CATEGORIES.map((cat, i) => (
             <button key={i} onClick={() => setActiveCat(i)} style={{
               padding: '4px 8px', borderRadius: 6, border: 'none', whiteSpace: 'nowrap',

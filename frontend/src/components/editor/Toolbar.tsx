@@ -131,6 +131,16 @@ const Ic = {
       <path d="M3 21l3.5-3.5"/>
     </svg>
   ),
+  line: (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+      <line x1="3" y1="21" x2="21" y2="3"/>
+    </svg>
+  ),
+  bezier: (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <path d="M3 20 C 8 4, 16 4, 21 20" fill="none"/>
+    </svg>
+  ),
   gallery: (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
@@ -242,8 +252,10 @@ export default function Toolbar({
 
       {sectionLabel('Малювання')}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '0 4px' }}>
-        {btn({ id: 'pencil',      label: 'Олівець', icon: Ic.pencil })}
-        {btn({ id: 'eyedropper', label: 'Піпетка',  icon: Ic.eyedropper })}
+        {btn({ id: 'pencil',      label: 'Олівець',       icon: Ic.pencil })}
+        {btn({ id: 'draw-line',   label: 'Лінія',         icon: Ic.line })}
+        {btn({ id: 'draw-bezier', label: 'Крива Безьє',   icon: Ic.bezier })}
+        {btn({ id: 'eyedropper',  label: 'Піпетка',       icon: Ic.eyedropper })}
       </div>
 
       <div>
