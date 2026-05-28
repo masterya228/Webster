@@ -1,16 +1,14 @@
 export interface FilterDef {
   id: string;
   label: string;
-  preview: string;    // CSS filter string for preview swatch & canvas overlay
-  fabricFilter: any;  // fabric.js filter spec for image objects
+  preview: string;   // CSS filter string — used for swatch preview AND canvas/object rendering
 }
 
 interface Props {
-  onApplyFilter: (filter: FilterDef) => void;
-  onApplyCanvasFilter: (cssFilter: string) => void;
-  onClearCanvasFilter: () => void;
-  canvasFilter: string;   // current active canvas CSS filter (empty = none)
+  onApply: (filter: FilterDef) => void;
+  onClear: () => void;
   onClose: () => void;
+  hasSelection: boolean;  // are objects currently selected on canvas?
 }
 
 const BG      = '#16162a';
@@ -20,26 +18,30 @@ const MUTED   = '#6b6b90';
 const PRIMARY = '#6c63ff';
 
 export const FILTERS: FilterDef[] = [
-  { id: 'grayscale',   label: 'Ч/Б',        preview: 'grayscale(1)',                                      fabricFilter: { type: 'Grayscale' } },
-  { id: 'sepia',       label: 'Сепія',       preview: 'sepia(0.8)',                                        fabricFilter: { type: 'Sepia', value: 0.8 } },
-  { id: 'invert',      label: 'Інвертація',  preview: 'invert(1)',                                         fabricFilter: { type: 'Invert' } },
-  { id: 'blur',        label: 'Розмиття',    preview: 'blur(3px)',                                         fabricFilter: { type: 'Blur', blur: 0.1 } },
-  { id: 'sharpen',     label: 'Різкість',    preview: 'contrast(1.4) brightness(1.05)',                    fabricFilter: { type: 'Convolute', matrix: [0,-1,0,-1,5,-1,0,-1,0] } },
-  { id: 'vintage',     label: 'Вінтаж',      preview: 'sepia(0.5) contrast(0.9) brightness(0.9) saturate(1.2)', fabricFilter: { type: 'Vintage' } },
-  { id: 'warm',        label: 'Тепло',       preview: 'sepia(0.25) brightness(1.1)',                      fabricFilter: { type: 'ColorMatrix', matrix: [1.2,0.05,0,0,0, 0,1.05,0,0,0, 0,0,0.85,0,0, 0,0,0,1,0] } },
-  { id: 'cool',        label: 'Холод',       preview: 'hue-rotate(200deg) saturate(1.2)',                 fabricFilter: { type: 'ColorMatrix', matrix: [0.85,0,0.1,0,0, 0,0.95,0.1,0,0, 0.05,0.1,1.2,0,0, 0,0,0,1,0] } },
-  { id: 'brightness',  label: 'Яскраво',     preview: 'brightness(1.35)',                                 fabricFilter: { type: 'Brightness', brightness: 0.35 } },
-  { id: 'contrast',    label: 'Контраст',    preview: 'contrast(1.5)',                                    fabricFilter: { type: 'Contrast', contrast: 0.3 } },
-  { id: 'saturate',    label: 'Насиченість', preview: 'saturate(2)',                                      fabricFilter: { type: 'Saturation', saturation: 0.8 } },
-  { id: 'technicolor', label: 'Технікол.',   preview: 'hue-rotate(30deg) saturate(1.8) contrast(1.2)',   fabricFilter: { type: 'Technicolor' } },
+  { id: 'grayscale',   label: 'Ч/Б',        preview: 'grayscale(1)' },
+  { id: 'sepia',       label: 'Сепія',       preview: 'sepia(0.85)' },
+  { id: 'invert',      label: 'Інвертація',  preview: 'invert(1)' },
+  { id: 'blur',        label: 'Розмиття',    preview: 'blur(4px)' },
+  { id: 'sharpen',     label: 'Різкість',    preview: 'contrast(1.4) brightness(1.05)' },
+  { id: 'vintage',     label: 'Вінтаж',      preview: 'sepia(0.5) contrast(0.9) brightness(0.9) saturate(1.2)' },
+  { id: 'warm',        label: 'Тепло',       preview: 'sepia(0.25) brightness(1.1) saturate(1.3)' },
+  { id: 'cool',        label: 'Холод',       preview: 'hue-rotate(200deg) saturate(1.1) brightness(1.05)' },
+  { id: 'bright',      label: 'Яскраво',     preview: 'brightness(1.4)' },
+  { id: 'contrast',    label: 'Контраст',    preview: 'contrast(1.6)' },
+  { id: 'saturate',    label: 'Насиченість', preview: 'saturate(2.5)' },
+  { id: 'fade',        label: 'Вицвілий',    preview: 'saturate(0.4) brightness(1.1)' },
 ];
 
-const SWATCH_GRADIENT = 'linear-gradient(135deg, #f59e0b 0%, #6c63ff 50%, #10b981 100%)';
+const SWATCH = 'linear-gradient(135deg, #f59e0b 0%, #6c63ff 50%, #10b981 100%)';
 
-export default function FiltersPanel({ onApplyFilter, onApplyCanvasFilter, onClearCanvasFilter, canvasFilter, onClose }: Props) {
+export default function FiltersPanel({ onApply, onClear, onClose, hasSelection }: Props) {
+  const hint = hasSelection
+    ? 'Фільтр застосується до виділених об'єктів'
+    : 'Нічого не виділено — фільтр накладеться на все полотно';
+
   return (
     <div style={{
-      width: 224, background: BG, borderRight: `1px solid ${BORDER}`,
+      width: 218, background: BG, borderRight: `1px solid ${BORDER}`,
       display: 'flex', flexDirection: 'column', flexShrink: 0, zIndex: 10,
     }}>
       {/* Header */}
@@ -48,85 +50,64 @@ export default function FiltersPanel({ onApplyFilter, onApplyCanvasFilter, onCle
         padding: '10px 12px 6px', borderBottom: `1px solid ${BORDER}`,
       }}>
         <span style={{ fontSize: 13, fontWeight: 600, color: TEXT }}>Фільтри</span>
-        <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: MUTED, cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px' }}>×</button>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', color: MUTED, cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px' }}>×</button>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto' }}>
-        {/* Canvas-wide filter section */}
-        <div style={{ padding: '10px 10px 8px', borderBottom: `1px solid ${BORDER}` }}>
-          <div style={{ fontSize: 10, fontWeight: 600, color: MUTED, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>
-            На все полотно
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5, marginBottom: 8 }}>
-            {FILTERS.map(f => {
-              const active = canvasFilter === f.preview;
-              return (
-                <button
-                  key={'cv-' + f.id}
-                  onClick={() => active ? onClearCanvasFilter() : onApplyCanvasFilter(f.preview)}
-                  title={active ? 'Скинути' : `Полотно: ${f.label}`}
-                  style={{
-                    padding: 0, border: `1.5px solid ${active ? PRIMARY : BORDER}`, borderRadius: 6,
-                    overflow: 'hidden', cursor: 'pointer', background: 'transparent', transition: 'border-color .15s',
-                  }}
-                  onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.borderColor = PRIMARY; }}
-                  onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.borderColor = BORDER; }}
-                >
-                  <div style={{ width: '100%', height: 40, background: SWATCH_GRADIENT, filter: f.preview, position: 'relative' }}>
-                    {active && (
-                      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="20 6 9 17 4 12"/>
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 9, color: active ? PRIMARY : MUTED, padding: '2px 4px', textAlign: 'center', background: '#1a1a2e', fontWeight: active ? 600 : 400 }}>
-                    {f.label}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-          {canvasFilter && (
-            <button
-              onClick={onClearCanvasFilter}
-              style={{ width: '100%', padding: '6px 0', borderRadius: 7, border: `1px solid ${BORDER}`, background: 'transparent', color: MUTED, fontSize: 11, cursor: 'pointer' }}
-            >
-              × Скинути фільтр полотна
-            </button>
-          )}
+      {/* Context hint */}
+      <div style={{ padding: '8px 11px 6px', borderBottom: `1px solid ${BORDER}` }}>
+        <div style={{
+          fontSize: 10, color: hasSelection ? '#7dd3fc' : MUTED, lineHeight: 1.5,
+          background: hasSelection ? 'rgba(125,211,252,.08)' : 'transparent',
+          borderRadius: 6, padding: '4px 7px',
+        }}>
+          {hint}
         </div>
+      </div>
 
-        {/* Per-object filter section */}
-        <div style={{ padding: '10px 10px 12px' }}>
-          <div style={{ fontSize: 10, fontWeight: 600, color: MUTED, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>
-            На виділений об'єкт
-          </div>
-          <div style={{ fontSize: 10, color: MUTED, marginBottom: 8, lineHeight: 1.5 }}>
-            Виберіть зображення на полотні, потім натисніть фільтр.
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
-            {FILTERS.map(f => (
-              <button
-                key={f.id}
-                onClick={() => onApplyFilter(f)}
-                title={`Об'єкт: ${f.label}`}
-                style={{
-                  padding: 0, border: `1px solid ${BORDER}`, borderRadius: 6, overflow: 'hidden',
-                  cursor: 'pointer', background: 'transparent', transition: 'border-color .15s',
-                }}
-                onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = PRIMARY}
-                onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = BORDER}
-              >
-                <div style={{ width: '100%', height: 40, background: SWATCH_GRADIENT, filter: f.preview }} />
-                <div style={{ fontSize: 9, color: MUTED, padding: '2px 4px', textAlign: 'center', background: '#1a1a2e' }}>
-                  {f.label}
-                </div>
-              </button>
-            ))}
-          </div>
+      {/* Filter grid */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 10px 10px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
+          {FILTERS.map(f => (
+            <button
+              key={f.id}
+              onClick={() => onApply(f)}
+              title={f.label}
+              style={{
+                padding: 0, border: `1px solid ${BORDER}`, borderRadius: 7, overflow: 'hidden',
+                cursor: 'pointer', background: 'transparent', transition: 'border-color .13s, transform .1s',
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.borderColor = PRIMARY;
+                (e.currentTarget as HTMLElement).style.transform = 'scale(1.03)';
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.borderColor = BORDER;
+                (e.currentTarget as HTMLElement).style.transform = 'scale(1)';
+              }}
+            >
+              <div style={{ width: '100%', height: 44, background: SWATCH, filter: f.preview }} />
+              <div style={{ fontSize: 9.5, color: MUTED, padding: '3px 4px', textAlign: 'center', background: '#1a1a2e' }}>
+                {f.label}
+              </div>
+            </button>
+          ))}
         </div>
+      </div>
+
+      {/* Clear button */}
+      <div style={{ padding: '8px 10px 10px', borderTop: `1px solid ${BORDER}` }}>
+        <button
+          onClick={onClear}
+          style={{
+            width: '100%', padding: '7px 0', borderRadius: 8, border: `1px solid ${BORDER}`,
+            background: 'transparent', color: MUTED, fontSize: 11, fontWeight: 500, cursor: 'pointer',
+            transition: 'border-color .13s, color .13s',
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = '#ef4444'; (e.currentTarget as HTMLElement).style.color = '#ef4444'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = BORDER; (e.currentTarget as HTMLElement).style.color = MUTED; }}
+        >
+          × Зняти фільтр
+        </button>
       </div>
     </div>
   );

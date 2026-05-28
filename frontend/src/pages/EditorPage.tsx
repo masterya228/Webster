@@ -20,7 +20,7 @@ import { LogoMark } from '../components/Logo';
 const SHAPE_TOOLS = [
   'draw-rect','draw-circle',
   'draw-rounded-rect','draw-diamond','draw-trapezoid','draw-right-triangle','draw-arrow',
-  'draw-line','draw-bezier',
+  'draw-line',
 ];
 const SHAPE_LABELS: Record<string, string> = {
   'draw-rect':           '▭ Прямокутник',
@@ -31,7 +31,6 @@ const SHAPE_LABELS: Record<string, string> = {
   'draw-right-triangle': '◺ Трикутник',
   'draw-arrow':          '→ Стрілка',
   'draw-line':           '╱ Лінія',
-  'draw-bezier':         '∿ Крива',
 };
 
 function buildShape(
@@ -39,12 +38,11 @@ function buildShape(
   fillMode: FillMode, fillColor: string, strokeColor: string,
   strokeWidth: number, opacity: number,
 ): fabric.Object | null {
-  const isLineTool = tool === 'draw-line' || tool === 'draw-bezier';
   const w = Math.abs(x2-x1), h = Math.abs(y2-y1);
   const left = Math.min(x1,x2), top = Math.min(y1,y2);
   const dist = Math.sqrt((x2-x1)**2 + (y2-y1)**2);
 
-  if (isLineTool ? dist < 4 : (w < 2 || h < 2)) return null;
+  if (tool === 'draw-line' ? dist < 4 : (w < 2 || h < 2)) return null;
 
   const fill   = fillMode === 'outline' ? 'transparent' : fillColor;
   const stroke = fillMode === 'filled'  ? 'transparent' : strokeColor;
@@ -80,21 +78,38 @@ function buildShape(
         stroke: lineStroke, strokeWidth: lineSw, fill: 'transparent', opacity,
         selectable: false, evented: false, objectCaching: false,
       });
-    case 'draw-bezier': {
-      // Quadratic bezier: control point is offset perpendicular to the midpoint
-      const mx = (x1+x2)/2, my = (y1+y2)/2;
-      const dx = x2-x1, dy = y2-y1;
-      const offset = Math.min(dist * 0.38, 180);
-      const perpX = dist > 0 ? -dy/dist*offset : 0;
-      const perpY = dist > 0 ?  dx/dist*offset : 0;
-      return new fabric.Path(
-        `M ${x1} ${y1} Q ${mx+perpX} ${my+perpY} ${x2} ${y2}`,
-        { stroke: lineStroke, strokeWidth: lineSw, fill: 'transparent', opacity,
-          selectable: false, evented: false, objectCaching: false },
-      );
-    }
     default: return null;
   }
+}
+
+/** Apply a CSS filter to any fabric object via render-override (works on all types) */
+function patchObjectFilter(obj: fabric.Object, cssFilter: string) {
+  const o = obj as any;
+  // Remove any existing instance-level patch so we never stack wrappers
+  if (o._filterPatched) {
+    delete o.render;           // instance override gone → prototype chain restored
+    o._filterPatched = false;
+  }
+  o._cssFilter = cssFilter;
+  obj.set('objectCaching', false);
+  if (!cssFilter) return;
+  // Capture the prototype render bound to this instance
+  const origRender = (o.render as Function).bind(obj);
+  o._filterPatched = true;
+  (obj as any).render = function(ctx: CanvasRenderingContext2D) {
+    ctx.save();
+    ctx.filter = cssFilter;
+    origRender(ctx);
+    ctx.restore();
+  };
+}
+
+/** Re-apply _cssFilter patches after loadFromJSON (deserialization loses instance methods) */
+function reapplyObjectFilters(c: fabric.Canvas) {
+  c.getObjects().forEach(obj => {
+    const f = (obj as any)._cssFilter;
+    if (f) patchObjectFilter(obj, f);
+  });
 }
 
 const HISTORY_LIMIT = 200;
@@ -121,6 +136,7 @@ export default function EditorPage() {
   const bgHistoryTimer    = useRef<ReturnType<typeof setTimeout>>();
   const clipboardRef      = useRef<fabric.Object | null>(null);
   const lastPropsByType   = useRef<Record<string, { fill: string; stroke: string; strokeWidth: number; opacity: number }>>({});
+  const saveDesignRef     = useRef<() => Promise<string | null>>(async () => null);
 
   const [design,       setDesign]       = useState<Design | null>(null);
   const [title,        setTitle]        = useState('Untitled Design');
@@ -198,7 +214,7 @@ export default function EditorPage() {
   const pushHistory = useCallback((label = '✏ Зміна') => {
     const c = fabricRef.current;
     if (!c || suppressRef.current) return;
-    const json = JSON.stringify(c.toJSON(['_label', '_locked', '_isSticker']));
+    const json = JSON.stringify(c.toJSON(['_label', '_locked', '_isSticker', '_cssFilter']));
     const idx  = historyIndexRef.current;
     const arr  = historyRef.current.slice(0, idx + 1);
     const lbls = historyLabelsRef.current.slice(0, idx + 1);
@@ -219,6 +235,7 @@ export default function EditorPage() {
     suppressRef.current = true;
     fabricRef.current?.loadFromJSON(historyRef.current[newIdx], () => {
       fabricRef.current?.renderAll();
+      if (fabricRef.current) reapplyObjectFilters(fabricRef.current);
       suppressRef.current = false;
       refreshObjects();
     });
@@ -232,6 +249,7 @@ export default function EditorPage() {
     suppressRef.current = true;
     fabricRef.current?.loadFromJSON(historyRef.current[newIdx], () => {
       fabricRef.current?.renderAll();
+      if (fabricRef.current) reapplyObjectFilters(fabricRef.current);
       suppressRef.current = false;
       refreshObjects();
     });
@@ -244,6 +262,7 @@ export default function EditorPage() {
     suppressRef.current = true;
     fabricRef.current?.loadFromJSON(historyRef.current[i], () => {
       fabricRef.current?.renderAll();
+      if (fabricRef.current) reapplyObjectFilters(fabricRef.current);
       suppressRef.current = false;
       refreshObjects();
     });
@@ -446,7 +465,6 @@ export default function EditorPage() {
       const k = e.key.toLowerCase();
       if ((e.ctrlKey || e.metaKey) && (k === 'z' || k === 'я')) { e.preventDefault(); undo(); }
       if ((e.ctrlKey || e.metaKey) && (k === 'y' || k === 'н')) { e.preventDefault(); redo(); }
-      if ((e.ctrlKey || e.metaKey) && k === 's') { e.preventDefault(); saveDesign(); }
       if ((e.ctrlKey || e.metaKey) && (k === 'c' || k === 'с') && !inInput) {
         const active = canvas.getActiveObject();
         if (active) active.clone((cloned: fabric.Object) => { clipboardRef.current = cloned; });
@@ -522,6 +540,7 @@ export default function EditorPage() {
             canvas.loadFromJSON(resolveCanvasJsonUrls(data.canvasData), () => {
               canvas.setDimensions({ width: data.width * fitZ, height: data.height * fitZ });
               canvas.setViewportTransform([fitZ,0,0,fitZ,0,0]);
+              reapplyObjectFilters(canvas);
               canvas.renderAll();
               suppressRef.current = false;
               canvas.setBackgroundColor(bg, canvas.renderAll.bind(canvas));
@@ -557,6 +576,20 @@ export default function EditorPage() {
       canvas.dispose();
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Capture-phase Ctrl+S — runs BEFORE the browser "Save webpage" dialog.
+  // saveDesignRef is always current so there's no stale-closure issue.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        e.stopPropagation();
+        saveDesignRef.current?.();
+      }
+    };
+    window.addEventListener('keydown', handler, { capture: true });
+    return () => window.removeEventListener('keydown', handler, { capture: true });
+  }, []); // eslint-disable-line
 
   useEffect(() => {
     const canvas = fabricRef.current;
@@ -733,18 +766,28 @@ export default function EditorPage() {
   const applyFilterToSelected = (filterDef: FilterDef) => {
     const c = fabricRef.current;
     if (!c) return;
-    const obj = c.getActiveObject() as any;
-    if (!obj) return;
-    // Works on fabric.Image; also works on any object via custom rendering
-    if (obj.type === 'image') {
-      const { type, ...params } = filterDef.fabricFilter;
-      const FClass = (fabric as any).Image.filters[type];
-      if (FClass) {
-        obj.filters = [new FClass(params)];
-        obj.applyFilters();
-        c.renderAll();
-        pushHistory(`⬡ Фільтр`);
-      }
+    const activeObjs = c.getActiveObjects();
+    if (activeObjs.length > 0) {
+      // Apply CSS filter via render-override to every selected object
+      activeObjs.forEach(obj => patchObjectFilter(obj, filterDef.preview));
+      c.renderAll();
+      pushHistory('⬡ Фільтр');
+    } else {
+      // Nothing selected — apply filter to the entire canvas
+      setCanvasCssFilter(filterDef.preview);
+    }
+  };
+
+  const clearFilterFromSelected = () => {
+    const c = fabricRef.current;
+    if (!c) return;
+    const activeObjs = c.getActiveObjects();
+    if (activeObjs.length > 0) {
+      activeObjs.forEach(obj => patchObjectFilter(obj, ''));
+      c.renderAll();
+      pushHistory('× Фільтр');
+    } else {
+      setCanvasCssFilter('');
     }
   };
 
@@ -870,6 +913,7 @@ export default function EditorPage() {
         const zz = zoomRef.current;
         c.setDimensions({ width: tpl.width * zz, height: tpl.height * zz });
         c.setViewportTransform([zz,0,0,zz,0,0]);
+        reapplyObjectFilters(c);
         c.renderAll();
         suppressRef.current = false;
         pushHistory(`◫ ${label}`);
@@ -929,7 +973,7 @@ export default function EditorPage() {
     const c = fabricRef.current;
     if (!c) return null;
     setSaving(true);
-    const canvasData = c.toJSON(['_label', '_locked', '_isSticker']);
+    const canvasData = c.toJSON(['_label', '_locked', '_isSticker', '_cssFilter']);
     try {
       let savedId: string;
       if (design) {
@@ -959,6 +1003,8 @@ export default function EditorPage() {
     }
     return null;
   };
+  // Keep ref current so the capture-phase Ctrl+S handler always calls latest saveDesign
+  saveDesignRef.current = saveDesign;
 
   const togglePublic = async (pub: boolean) => {
     let targetId = design?.id;
@@ -1009,7 +1055,7 @@ export default function EditorPage() {
     if (!c || !name.trim()) return;
     setSavingTemplate(true);
     try {
-      const canvasData = c.toJSON(['_label', '_locked', '_isSticker']);
+      const canvasData = c.toJSON(['_label', '_locked', '_isSticker', '_cssFilter']);
       const thumbnail  = c.toDataURL({ format: 'jpeg', quality: 0.7, multiplier: 0.3 / zoomRef.current });
       await api.post('/templates', {
         name: name.trim(),
@@ -1261,10 +1307,9 @@ export default function EditorPage() {
 
         {showFilters && (
           <FiltersPanel
-            onApplyFilter={applyFilterToSelected}
-            onApplyCanvasFilter={(f) => setCanvasCssFilter(f)}
-            onClearCanvasFilter={() => setCanvasCssFilter('')}
-            canvasFilter={canvasCssFilter}
+            onApply={applyFilterToSelected}
+            onClear={clearFilterFromSelected}
+            hasSelection={selectedObject !== null}
             onClose={() => setShowFilters(false)}
           />
         )}

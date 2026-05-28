@@ -165,13 +165,30 @@ export default function DashboardPage() {
   );
 
   return (
-    <div className="page">
+    <div className="page" style={{
+      backgroundImage: 'radial-gradient(circle, rgba(108,99,255,0.055) 1px, transparent 1px)',
+      backgroundSize: '26px 26px',
+    }}>
       <Navbar />
       <div className="container" style={{ padding: '32px 24px', flex: 1 }}>
 
         <div style={{ position: 'relative', background: 'linear-gradient(120deg, #1a1a2e 0%, #2d2d6e 60%, #6c63ff 100%)', borderRadius: 16, padding: '32px 36px', marginBottom: 36, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          {/* Decorative geometric shapes */}
           <svg style={{ position: 'absolute', right: -40, top: -40, opacity: 0.12 }} width="220" height="220" viewBox="0 0 220 220"><circle cx="110" cy="110" r="110" fill="#fff"/></svg>
           <svg style={{ position: 'absolute', left: '40%', bottom: -30, opacity: 0.08 }} width="140" height="140" viewBox="0 0 140 140"><polygon points="70,5 135,135 5,135" fill="#a855f7"/></svg>
+          <svg style={{ position: 'absolute', left: 18, top: -8, opacity: 0.09 }} width="90" height="90" viewBox="0 0 90 90" fill="none">
+            <polygon points="45,5 85,80 5,80" stroke="#fff" strokeWidth="2"/>
+          </svg>
+          <svg style={{ position: 'absolute', right: '18%', top: 8, opacity: 0.07 }} width="60" height="60" viewBox="0 0 60 60" fill="none">
+            <rect x="5" y="5" width="50" height="50" rx="3" stroke="#fff" strokeWidth="2" transform="rotate(18 30 30)"/>
+          </svg>
+          <svg style={{ position: 'absolute', left: '28%', top: -16, opacity: 0.06 }} width="100" height="100" viewBox="0 0 100 100" fill="none">
+            <circle cx="50" cy="50" r="44" stroke="#a855f7" strokeWidth="3" strokeDasharray="8 6"/>
+          </svg>
+          <svg style={{ position: 'absolute', right: 90, bottom: -10, opacity: 0.1 }} width="70" height="70" viewBox="0 0 70 70" fill="none">
+            <polygon points="35,4 66,55 4,55" fill="#6c63ff" opacity=".6"/>
+            <polygon points="35,14 56,50 14,50" fill="none" stroke="#fff" strokeWidth="1.5"/>
+          </svg>
           <div style={{ position: 'relative', zIndex: 1 }}>
             <h1 style={{ fontSize: 26, marginBottom: 4, color: '#fff', fontFamily: 'Playfair Display, serif' }}>Вітаємо, {user?.name?.split(' ')[0]}!</h1>
             <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 14 }}>Що ви створите сьогодні?</p>
